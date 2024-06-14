@@ -10,8 +10,8 @@ We here provide a simple codebase to fine-tune our Depth Anything V2 pre-trained
 ### Inference
 
 Please first download our pre-trained metric depth models and put them under the `checkpoints` directory: 
-- [Indoor model from Hypersim](https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Large/resolve/main/depth_anything_v2_metric_hypersim_vitl.pth.pth?download=true)
-- [Outdoor model from Virtual KITTI 2](https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-VKITTI-Large/resolve/main/depth_anything_v2_metric_vkitti_vitl.pth.pth?download=true)
+- [Indoor model from Hypersim](https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Hypersim-Large/resolve/main/depth_anything_v2_metric_hypersim_vitl.pth?download=true)
+- [Outdoor model from Virtual KITTI 2](https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-VKITTI-Large/resolve/main/depth_anything_v2_metric_vkitti_vitl.pth?download=true)
 
 ```bash
 # indoor scenes
