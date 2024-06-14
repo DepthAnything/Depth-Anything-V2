@@ -49,7 +49,7 @@ If you find this project useful, please consider citing:
 @article{depth_anything_v2,
   title={Depth Anything V2},
   author={Yang, Lihe and Kang, Bingyi and Huang, Zilong and Zhao, Zhen and Xu, Xiaogang and Feng, Jiashi and Zhao, Hengshuang},
-  journal={arXiv preprint arXiv:},
+  journal={arXiv:2406.09414},
   year={2024}
 }
 ```

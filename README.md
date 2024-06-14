@@ -9,13 +9,13 @@
 <br>
 &dagger;project lead&emsp;*corresponding author
 
-<a href=""><img src='https://img.shields.io/badge/arXiv-Depth Anything V2-red' alt='Paper PDF'></a>
+<a href="https://arxiv.org/abs/2406.09414"><img src='https://img.shields.io/badge/arXiv-Depth Anything V2-red' alt='Paper PDF'></a>
 <a href='https://depth-anything-v2.github.io'><img src='https://img.shields.io/badge/Project_Page-Depth Anything V2-green' alt='Project Page'></a>
 <a href='https://huggingface.co/spaces/depth-anything/Depth-Anything-V2'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue'></a>
 <a href='https://huggingface.co/datasets/depth-anything/DA-2K'><img src='https://img.shields.io/badge/Benchmark-DA--2K-green' alt='Benchmark'></a>
 </div>
 
-This work presents Depth Anything V2. Compared with V1, this version produces significantly more fine-grained and robust depth predictions. Compared with SD-based models, it is much more efficient and lightweight.
+This work presents Depth Anything V2. It significantly outperforms V1 in fine-grained details and robustness. Compared with SD-based models, it enjoys faster inference speed, fewer parameters, and higher depth accuracy.
 
 ![teaser](assets/teaser.png)
 
@@ -49,7 +49,7 @@ model.load_state_dict(torch.load('checkpoints/depth_anything_v2_vitg.pth', map_l
 model.eval()
 
 raw_img = cv2.imread('your/image/path')
-depth = model.infer_img(raw_img) # HxW raw depth map
+depth = model.infer_image(raw_img) # HxW raw depth map
 ```
 
 ## Usage
@@ -97,7 +97,7 @@ python app.py
 
 You can also try our [online demo](https://huggingface.co/spaces/Depth-Anything/Depth-Anything-V2).
 
-**Note:** Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)). In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use intermediate features instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
+**Note:** Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)). In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use [intermediate features](https://github.com/DepthAnything/Depth-Anything-V2/blob/2cbc36a8ce2cec41d38ee51153f112e87c8e42d8/depth_anything_v2/dpt.py#L164-L169) instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
 
 
 
@@ -110,6 +110,10 @@ Please refer to [metric depth estimation](./metric_depth).
 
 Please refer to [DA-2K benchmark](./DA-2K.md).
 
+## LICENSE
+
+Depth-Anything-V2-Small model is under the Apache-2.0 license. Depth-Anything-V2-Base/Large/Giant are under the CC-BY-NC-4.0 license.
+
 
 ## Citation
 
@@ -119,7 +123,7 @@ If you find this project useful, please consider citing:
 @article{depth_anything_v2,
   title={Depth Anything V2},
   author={Yang, Lihe and Kang, Bingyi and Huang, Zilong and Zhao, Zhen and Xu, Xiaogang and Feng, Jiashi and Zhao, Hengshuang},
-  journal={arXiv preprint arXiv:},
+  journal={arXiv:2406.09414},
   year={2024}
 }
 ```

@@ -38,7 +38,7 @@ model = model.to(DEVICE).eval()
 
 title = "# Depth Anything V2"
 description = """Official demo for **Depth Anything V2**.
-Please refer to our [paper](), [project page](https://depth-anything-v2.github.io), or [github](https://github.com/DepthAnything/Depth-Anything-V2) for more details."""
+Please refer to our [paper](https://arxiv.org/abs/2406.09414), [project page](https://depth-anything-v2.github.io), or [github](https://github.com/DepthAnything/Depth-Anything-V2) for more details."""
 
 def predict_depth(image):
     return model.infer_image(image)
