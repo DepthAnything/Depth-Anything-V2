@@ -11,7 +11,7 @@ Please refer to our [paper](https://arxiv.org/abs/2406.09414) for details in con
 
 ## Usage
 
-Please first [download the benchmark]().
+Please first [download the benchmark](https://huggingface.co/datasets/depth-anything/DA-2K/tree/main).
 
 All annotations are stored in `annotations.json`. The annotation file is a JSON object where each key is the path to an image file, and the value is a list of annotations associated with that image. Each annotation describes two points and identifies which point is closer to the camera. The structure is detailed below:
 
