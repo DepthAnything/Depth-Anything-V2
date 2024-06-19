@@ -21,6 +21,7 @@ This work presents Depth Anything V2. It significantly outperforms [V1](https://
 
 ## News
 
+- **2024-06-20:** Our repository and project page are flagged by GitHub and removed from the public for 6 days. Sorry for the inconvenience.
 - **2024-06-14:** Paper, project page, code, models, demo, and benchmark are all released.
 
 
@@ -43,9 +44,9 @@ import torch
 
 from depth_anything_v2.dpt import DepthAnythingV2
 
-# take depth-anything-v2-giant as an example
-model = DepthAnythingV2(encoder='vitg', features=384, out_channels=[1536, 1536, 1536, 1536])
-model.load_state_dict(torch.load('checkpoints/depth_anything_v2_vitg.pth', map_location='cpu'))
+# take depth-anything-v2-large as an example
+model = DepthAnythingV2(encoder='vitl', features=256, out_channels=[256, 512, 1024, 1024])
+model.load_state_dict(torch.load('checkpoints/depth_anything_v2_vitl.pth', map_location='cpu'))
 model.eval()
 
 raw_img = cv2.imread('your/image/path')
@@ -65,7 +66,7 @@ pip install -r requirements.txt
 ### Running
 
 ```bash
-python run.py --encoder <vits | vitb | vitl | vitg> --img-path <path> --outdir <outdir> [--input-size <size>] [--pred-only] [--grayscale]
+python run.py --encoder <vits | vitb | vitl> --img-path <path> --outdir <outdir> [--input-size <size>] [--pred-only] [--grayscale]
 ```
 Options:
 - `--img-path`: You can either 1) point it to an image directory storing all interested images, 2) point it to a single image, or 3) point it to a text file storing all image paths.
@@ -75,13 +76,13 @@ Options:
 
 For example:
 ```bash
-python run.py --encoder vitg --img-path assets/examples --outdir depth_vis
+python run.py --encoder vitl --img-path assets/examples --outdir depth_vis
 ```
 
 **If you want to use Depth Anything V2 on videos:**
 
 ```bash
-python run_video.py --encoder vitg --video-path assets/examples_video --outdir video_depth_vis
+python run_video.py --encoder vitl --video-path assets/examples_video --outdir video_depth_vis
 ```
 
 *Please note that our larger model has better temporal consistency on videos.*
