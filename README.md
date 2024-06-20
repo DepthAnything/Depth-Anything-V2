@@ -82,7 +82,7 @@ python run.py --encoder vitl --img-path assets/examples --outdir depth_vis
 **If you want to use Depth Anything V2 on videos:**
 
 ```bash
-python run_video.py --encoder vitl --video-path assets/examples_video --outdir video_depth_vis
+python run_video.py --encoder <vits | vitb | vitl> --video-path assets/examples_video --outdir video_depth_vis [--input-size <size>] [--pred-only] [--grayscale]
 ```
 
 *Please note that our larger model has better temporal consistency on videos.*

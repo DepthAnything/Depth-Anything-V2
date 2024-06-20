@@ -56,7 +56,11 @@ if __name__ == '__main__':
         raw_video = cv2.VideoCapture(filename)
         frame_width, frame_height = int(raw_video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(raw_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_rate = int(raw_video.get(cv2.CAP_PROP_FPS))
-        output_width = frame_width * 2 + margin_width
+        
+        if args.pred_only: 
+            output_width = frame_width
+        else: 
+            output_width = frame_width * 2 + margin_width
         
         output_path = os.path.join(args.outdir, os.path.splitext(os.path.basename(filename))[0] + '.mp4')
         out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
