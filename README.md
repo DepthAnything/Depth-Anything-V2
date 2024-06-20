@@ -98,7 +98,7 @@ python app.py
 
 You can also try our [online demo](https://huggingface.co/spaces/Depth-Anything/Depth-Anything-V2).
 
-**Note:** Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)). In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use [intermediate features](https://github.com/DepthAnything/Depth-Anything-V2/blob/2cbc36a8ce2cec41d38ee51153f112e87c8e42d8/depth_anything_v2/dpt.py#L164-L169) instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
+**Note: Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)).** In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use [intermediate features](https://github.com/DepthAnything/Depth-Anything-V2/blob/2cbc36a8ce2cec41d38ee51153f112e87c8e42d8/depth_anything_v2/dpt.py#L164-L169) instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
 
 
 
@@ -110,6 +110,18 @@ Please refer to [metric depth estimation](./metric_depth).
 ## DA-2K Evaluation Benchmark
 
 Please refer to [DA-2K benchmark](./DA-2K.md).
+
+## Community Support
+
+**We sincerely appreciate all the community support for our Depth Anything series. Thank you a lot!**
+
+- Depth Anything V2 TensorRT: https://github.com/spacewalk01/depth-anything-tensorrt
+- Depth Anything V2 in ComfyUI: https://github.com/kijai/ComfyUI-DepthAnythingV2
+- Depth Anything V2 in Android:
+  - https://github.com/shubham0204/Depth-Anything-Android
+  - https://github.com/FeiGeChuanShu/ncnn-android-depth_anything
+
+
 
 ## LICENSE
 
