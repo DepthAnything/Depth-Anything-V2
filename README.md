@@ -21,6 +21,7 @@ This work presents Depth Anything V2. It significantly outperforms [V1](https://
 
 ## News
 
+- **2024-06-22:** We release smaller metric depth models based on Depth-Anything-V2-Small and Base.
 - **2024-06-20:** Our repository and project page are flagged by GitHub and removed from the public for 6 days. Sorry for the inconvenience.
 - **2024-06-14:** Paper, project page, code, models, demo, and benchmark are all released.
 
@@ -36,26 +37,9 @@ We provide **four models** of varying scales for robust relative depth estimatio
 | Depth-Anything-V2-Large | 335.3M | [Download](https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/depth_anything_v2_vitl.pth?download=true) |
 | Depth-Anything-V2-Giant | 1.3B | Coming soon |
 
-
-### Code snippet to use our models
-```python
-import cv2
-import torch
-
-from depth_anything_v2.dpt import DepthAnythingV2
-
-# take depth-anything-v2-large as an example
-model = DepthAnythingV2(encoder='vitl', features=256, out_channels=[256, 512, 1024, 1024])
-model.load_state_dict(torch.load('checkpoints/depth_anything_v2_vitl.pth', map_location='cpu'))
-model.eval()
-
-raw_img = cv2.imread('your/image/path')
-depth = model.infer_image(raw_img) # HxW raw depth map
-```
-
 ## Usage
 
-### Installation
+### Prepraration
 
 ```bash
 git clone https://github.com/DepthAnything/Depth-Anything-V2
@@ -63,14 +47,43 @@ cd Depth-Anything-V2
 pip install -r requirements.txt
 ```
 
-### Running
+Download the checkpoints listed [here](#pre-trained-models) and put them under the `checkpoints` directory.
+
+### Use our models
+```python
+import cv2
+import torch
+
+from depth_anything_v2.dpt import DepthAnythingV2
+
+model_configs = {
+    'vits': {'encoder': 'vits', 'features': 64, 'out_channels': [48, 96, 192, 384]},
+    'vitb': {'encoder': 'vitb', 'features': 128, 'out_channels': [96, 192, 384, 768]},
+    'vitl': {'encoder': 'vitl', 'features': 256, 'out_channels': [256, 512, 1024, 1024]},
+    'vitg': {'encoder': 'vitg', 'features': 384, 'out_channels': [1536, 1536, 1536, 1536]}
+}
+
+encoder = 'vitl' # or 'vits', 'vitb', 'vitg'
+
+model = DepthAnythingV2(**model_configs[encoder])
+model.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_{encoder}.pth', map_location='cpu'))
+model.eval()
+
+raw_img = cv2.imread('your/image/path')
+depth = model.infer_image(raw_img) # HxW raw depth map in numpy
+```
+
+### Running script on *images*
 
 ```bash
-python run.py --encoder <vits | vitb | vitl> --img-path <path> --outdir <outdir> [--input-size <size>] [--pred-only] [--grayscale]
+python run.py \
+  --encoder <vits | vitb | vitl | vitg> \
+  --img-path <path> --outdir <outdir> \
+  [--input-size <size>] [--pred-only] [--grayscale]
 ```
 Options:
 - `--img-path`: You can either 1) point it to an image directory storing all interested images, 2) point it to a single image, or 3) point it to a text file storing all image paths.
-- `--input-size` (optional): By default, we use input size `518` for model inference. **You can increase the size for even more fine-grained results.**
+- `--input-size` (optional): By default, we use input size `518` for model inference. ***You can increase the size for even more fine-grained results.***
 - `--pred-only` (optional): Only save the predicted depth map, without raw image.
 - `--grayscale` (optional): Save the grayscale depth map, without applying color palette.
 
@@ -79,13 +92,16 @@ For example:
 python run.py --encoder vitl --img-path assets/examples --outdir depth_vis
 ```
 
-**If you want to use Depth Anything V2 on videos:**
+### Running script on *videos*
 
 ```bash
-python run_video.py --encoder <vits | vitb | vitl> --video-path assets/examples_video --outdir video_depth_vis [--input-size <size>] [--pred-only] [--grayscale]
+python run_video.py \
+  --encoder <vits | vitb | vitl | vitg> \
+  --video-path assets/examples_video --outdir video_depth_vis \
+  [--input-size <size>] [--pred-only] [--grayscale]
 ```
 
-*Please note that our larger model has better temporal consistency on videos.*
+***Our larger model has better temporal consistency on videos.***
 
 
 ### Gradio demo
@@ -98,7 +114,7 @@ python app.py
 
 You can also try our [online demo](https://huggingface.co/spaces/Depth-Anything/Depth-Anything-V2).
 
-**Note: Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)).** In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use [intermediate features](https://github.com/DepthAnything/Depth-Anything-V2/blob/2cbc36a8ce2cec41d38ee51153f112e87c8e42d8/depth_anything_v2/dpt.py#L164-L169) instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
+***Note: Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)).*** In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use [intermediate features](https://github.com/DepthAnything/Depth-Anything-V2/blob/2cbc36a8ce2cec41d38ee51153f112e87c8e42d8/depth_anything_v2/dpt.py#L164-L169) instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
 
 
 
@@ -115,9 +131,10 @@ Please refer to [DA-2K benchmark](./DA-2K.md).
 
 **We sincerely appreciate all the community support for our Depth Anything series. Thank you a lot!**
 
-- Depth Anything V2 TensorRT: https://github.com/spacewalk01/depth-anything-tensorrt
-- Depth Anything V2 in ComfyUI: https://github.com/kijai/ComfyUI-DepthAnythingV2
-- Depth Anything V2 in Android:
+- TensorRT: https://github.com/spacewalk01/depth-anything-tensorrt
+- ComfyUI: https://github.com/kijai/ComfyUI-DepthAnythingV2
+- Transformers.js (real-time depth in web): https://huggingface.co/spaces/Xenova/webgpu-realtime-depth-estimation
+- Android:
   - https://github.com/shubham0204/Depth-Anything-Android
   - https://github.com/FeiGeChuanShu/ncnn-android-depth_anything
 
