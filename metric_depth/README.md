@@ -34,7 +34,7 @@ Download the checkpoints listed [here](#pre-trained-models) and put them under t
 import cv2
 import torch
 
-from depth_anything_v2.dpt import DepthAnythingV2
+from metric_depth.depth_anything_v2.dpt import DepthAnythingV2
 
 model_configs = {
     'vits': {'encoder': 'vits', 'features': 64, 'out_channels': [48, 96, 192, 384]},
