@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.transforms import Compose
+from huggingface_hub import PyTorchModelHubMixin
 
 from .dinov2 import DINOv2
 from .util.blocks import FeatureFusionBlock, _make_scratch
@@ -150,7 +151,11 @@ class DPTHead(nn.Module):
         return out
 
 
-class DepthAnythingV2(nn.Module):
+class DepthAnythingV2(nn.Module,
+                      PyTorchModelHubMixin,
+                      tags=["depth","relative depth"],
+                      pipeline_tag="depth-estimation"
+                      ):
     def __init__(
         self, 
         encoder='vitl', 
