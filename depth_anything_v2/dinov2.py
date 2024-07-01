@@ -200,7 +200,7 @@ class DinoVisionTransformer(nn.Module):
             patch_pos_embed.reshape(1, int(sqrt_N), int(sqrt_N), dim).permute(0, 3, 1, 2),
             scale_factor=(sx, sy),
             # (int(w0), int(h0)), # to solve the upsampling shape issue
-            mode="bicubic",
+            mode="bicubic" if x.device.type != "mps" else "bilinear",
             antialias=self.interpolate_antialias
         )
         
