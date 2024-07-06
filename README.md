@@ -11,7 +11,7 @@
 
 <a href="https://arxiv.org/abs/2406.09414"><img src='https://img.shields.io/badge/arXiv-Depth Anything V2-red' alt='Paper PDF'></a>
 <a href='https://depth-anything-v2.github.io'><img src='https://img.shields.io/badge/Project_Page-Depth Anything V2-green' alt='Project Page'></a>
-<a href='https://huggingface.co/spaces/depth-anything/Depth-Anything-V2'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue'></a>
+<a href='https://huggingface.co/spaces/depth-anything/Depth-Anything-V2'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-blue'></a>
 <a href='https://huggingface.co/datasets/depth-anything/DA-2K'><img src='https://img.shields.io/badge/Benchmark-DA--2K-yellow' alt='Benchmark'></a>
 </div>
 
@@ -19,8 +19,11 @@ This work presents Depth Anything V2. It significantly outperforms [V1](https://
 
 ![teaser](assets/teaser.png)
 
+
 ## News
 
+- **2024-07-06:** Depth Anything V2 is supported in [Transformers](https://github.com/huggingface/transformers/). See the [instructions](https://huggingface.co/docs/transformers/main/en/model_doc/depth_anything_v2) for convenient usage.
+- **2024-06-25:** Depth Anything is integrated into [Apple Core ML Models](https://developer.apple.com/machine-learning/models/). See the instructions ([V1](https://huggingface.co/apple/coreml-depth-anything-small), [V2](https://huggingface.co/apple/coreml-depth-anything-v2-small)) for usage.
 - **2024-06-22:** We release [smaller metric depth models](https://github.com/DepthAnything/Depth-Anything-V2/tree/main/metric_depth#pre-trained-models) based on Depth-Anything-V2-Small and Base.
 - **2024-06-20:** Our repository and project page are flagged by GitHub and removed from the public for 6 days. Sorry for the inconvenience.
 - **2024-06-14:** Paper, project page, code, models, demo, and benchmark are all released.
@@ -36,6 +39,7 @@ We provide **four models** of varying scales for robust relative depth estimatio
 | Depth-Anything-V2-Base | 97.5M | [Download](https://huggingface.co/depth-anything/Depth-Anything-V2-Base/resolve/main/depth_anything_v2_vitb.pth?download=true) |
 | Depth-Anything-V2-Large | 335.3M | [Download](https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/depth_anything_v2_vitl.pth?download=true) |
 | Depth-Anything-V2-Giant | 1.3B | Coming soon |
+
 
 ## Usage
 
@@ -75,6 +79,19 @@ raw_img = cv2.imread('your/image/path')
 depth = model.infer_image(raw_img) # HxW raw depth map in numpy
 ```
 
+If you do not want to clone this repository, you can also load our models through [Transformers](https://github.com/huggingface/transformers/). Below is a simple code snippet. Please refer to the [official page](https://huggingface.co/docs/transformers/main/en/model_doc/depth_anything_v2) for more details.
+
+- Note 1: Make sure you can connect to Hugging Face and have installed the latest Transformers.
+- Note 2: Due to the [upsampling difference](https://github.com/huggingface/transformers/pull/31522#issuecomment-2184123463) between OpenCV (we used) and Pillow (HF used), predictions may differ slightly. So you are more recommended to use our models through the way introduced above.
+```python
+from transformers import pipeline
+from PIL import Image
+
+pipe = pipeline(task="depth-estimation", model="depth-anything/Depth-Anything-V2-Small-hf")
+image = Image.open('your/image/path')
+depth = pipe(image)["depth"]
+```
+
 ### Running script on *images*
 
 ```bash
@@ -105,7 +122,6 @@ python run_video.py \
 
 ***Our larger model has better temporal consistency on videos.***
 
-
 ### Gradio demo
 
 To use our gradio demo locally:
@@ -119,7 +135,6 @@ You can also try our [online demo](https://huggingface.co/spaces/Depth-Anything/
 ***Note: Compared to V1, we have made a minor modification to the DINOv2-DPT architecture (originating from this [issue](https://github.com/LiheYoung/Depth-Anything/issues/81)).*** In V1, we *unintentionally* used features from the last four layers of DINOv2 for decoding. In V2, we use [intermediate features](https://github.com/DepthAnything/Depth-Anything-V2/blob/2cbc36a8ce2cec41d38ee51153f112e87c8e42d8/depth_anything_v2/dpt.py#L164-L169) instead. Although this modification did not improve details or accuracy, we decided to follow this common practice.
 
 
-
 ## Fine-tuned to Metric Depth Estimation
 
 Please refer to [metric depth estimation](./metric_depth).
@@ -129,11 +144,21 @@ Please refer to [metric depth estimation](./metric_depth).
 
 Please refer to [DA-2K benchmark](./DA-2K.md).
 
+
 ## Community Support
 
 **We sincerely appreciate all the community support for our Depth Anything series. Thank you a lot!**
 
-- TensorRT: https://github.com/spacewalk01/depth-anything-tensorrt
+- Apple Core ML:
+    - https://developer.apple.com/machine-learning/models
+    - https://huggingface.co/apple/coreml-depth-anything-v2-small
+    - https://huggingface.co/apple/coreml-depth-anything-small
+- Transformers:
+    - https://huggingface.co/docs/transformers/main/en/model_doc/depth_anything_v2
+    - https://huggingface.co/docs/transformers/main/en/model_doc/depth_anything
+- TensorRT:
+    - https://github.com/spacewalk01/depth-anything-tensorrt
+    - https://github.com/zhujiajian98/Depth-Anythingv2-TensorRT-python
 - ONNX: https://github.com/fabio-sim/Depth-Anything-ONNX
 - ComfyUI: https://github.com/kijai/ComfyUI-DepthAnythingV2
 - Transformers.js (real-time depth in web): https://huggingface.co/spaces/Xenova/webgpu-realtime-depth-estimation
@@ -141,6 +166,12 @@ Please refer to [DA-2K benchmark](./DA-2K.md).
   - https://github.com/shubham0204/Depth-Anything-Android
   - https://github.com/FeiGeChuanShu/ncnn-android-depth_anything
 
+
+## Acknowledgement
+
+We are sincerely grateful to the awesome Hugging Face team ([@Pedro Cuenca](https://huggingface.co/pcuenq), [@Niels Rogge](https://huggingface.co/nielsr), [@Merve Noyan](https://huggingface.co/merve), [@Amy Roberts](https://huggingface.co/amyeroberts), et al.) for their huge efforts in supporting our models in Transformers and Apple Core ML.
+
+We also thank the [DINOv2](https://github.com/facebookresearch/dinov2) team for contributing such impressive models to our community.
 
 
 ## LICENSE
