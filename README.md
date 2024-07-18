@@ -42,7 +42,7 @@ We provide **four models** of varying scales for robust relative depth estimatio
 
 You may use the script to directly download as well, using the following instructions:
 
-```
+```python
 python checkpoint_downloader.py --size [small/s/base/b/large/l]
 ```
 
