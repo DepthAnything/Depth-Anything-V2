@@ -40,6 +40,11 @@ We provide **four models** of varying scales for robust relative depth estimatio
 | Depth-Anything-V2-Large | 335.3M | [Download](https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/depth_anything_v2_vitl.pth?download=true) |
 | Depth-Anything-V2-Giant | 1.3B | Coming soon |
 
+You may use the script to directly download as well, using the following instructions:
+
+```
+python checkpoint_downloader.py --size [small/s/base/b/large/l]
+```
 
 ## Usage
 
@@ -173,6 +178,7 @@ We are sincerely grateful to the awesome Hugging Face team ([@Pedro Cuenca](http
 
 We also thank the [DINOv2](https://github.com/facebookresearch/dinov2) team for contributing such impressive models to our community.
 
+The test.jpg image is from [here](https://rankcomfort.com/top-digital-cameras-for-travel-photography-2024/).
 
 ## LICENSE
 
