@@ -7,7 +7,8 @@
 
 <sup>1</sup>HKU&emsp;&emsp;&emsp;<sup>2</sup>TikTok
 <br>
-&dagger;project lead&emsp;*corresponding author
+&dagger;project lead&emsp;*corresponding author  
+&dagger;[Bingyi Kang](https://bingykang.github.io/) proposed this project and advised in every aspect.  
 
 <a href="https://arxiv.org/abs/2406.09414"><img src='https://img.shields.io/badge/arXiv-Depth Anything V2-red' alt='Paper PDF'></a>
 <a href='https://depth-anything-v2.github.io'><img src='https://img.shields.io/badge/Project_Page-Depth Anything V2-green' alt='Project Page'></a>
