@@ -1,6 +1,5 @@
 from PIL import Image
-import os, json
-import pdb
+import os
 import torch
 import numpy as np
 import cv2
@@ -11,7 +10,6 @@ from torch.nn import functional as F
 import time
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import json
 import pickle
 import argparse
 
@@ -61,6 +59,7 @@ def params():
     parser.add_argument('--pickle_file_path', type=str, default='depth_imgs.pkl')
     parser.add_argument('--use-metric-depth-model', action='store_true')
     parser.add_argument('--device', type=str, default='0')
+    parser.add_argument('--batch-size', type=int, default=2)
     args = parser.parse_args()
     
     return args
@@ -116,7 +115,7 @@ if __name__ == '__main__':
         task = [d['observation']['natural_language_instruction'].numpy().decode('utf-8') for d in example['steps'].take(1)][0]
         example_idx = int(example['idx'].numpy())
         
-        for batch in example['steps'].batch(BATCH_SIZE):
+        for batch in example['steps'].batch(params.batch_size):
         
             images = batch['observation']['image']
             images = torch.stack([depth_anything.image2tensor(img.numpy())[0].squeeze(0) for
@@ -148,10 +147,6 @@ if __name__ == '__main__':
                 print(f'Saving depth image: {img_name}')
                 cv2.imwrite(f"depth_imgs/{img_name}", depth)
                 img_idx += 1
-            
-        
-        if img_idx % 1000 == 0:
-            print(f'Looked at {img_idx} images...')
     
     print(f'Saving {img_idx} images to pickle file...')
     save_pickle()
