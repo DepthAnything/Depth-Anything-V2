@@ -40,6 +40,8 @@ def main():
                         help='Path to the pre-trained model weights.')
     parser.add_argument('--max-depth', default=20, type=float,
                         help='Maximum depth value for the depth map.')
+    parser.add_argument('--input-size', type=int, default=518,
+                        help='Input image size for model, which different from the raw image resolution.')
     parser.add_argument('--img-path', type=str, required=True,
                         help='Path to the input image or directory containing images.')
     parser.add_argument('--outdir', type=str, default='./vis_pointcloud',
@@ -90,16 +92,13 @@ def main():
 
         # Read the image using OpenCV
         image = cv2.imread(filename)
-        pred = depth_anything.infer_image(image, height)
-
-        # Resize depth prediction to match the original image size
-        resized_pred = Image.fromarray(pred).resize((width, height), Image.NEAREST)
+        pred = depth_anything.infer_image(image, args.input_size)
 
         # Generate mesh grid and calculate point cloud coordinates
         x, y = np.meshgrid(np.arange(width), np.arange(height))
         x = (x - width / 2) / args.focal_length_x
         y = (y - height / 2) / args.focal_length_y
-        z = np.array(resized_pred)
+        z = pred
         points = np.stack((np.multiply(x, z), np.multiply(y, z), z), axis=-1).reshape(-1, 3)
         colors = np.array(color_image).reshape(-1, 3) / 255.0
 
