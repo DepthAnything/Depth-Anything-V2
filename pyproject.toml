@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools_scm[toml]>=7"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+git_describe_command= 'git describe --tags --abbrev=0 --dirty --match "depth_anything_v2*"'
+tag_regex = "^sane_controlnet_aux_v(?P<version>.*)$"
+
+[project]
+name = "depth-anything-v2"
+dynamic = ["version"]
+description = "Most capable monocular depth estimation (MDE) model."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "gradio_imageslider",
+  "gradio==4.29.0",
+  "matplotlib",
+  "opencv-python",
+  "torch",
+  "torchvision",
+]
+
+[project.urls]
+repository = "https://github.com/DepthAnything/Depth-Anything-V2"
