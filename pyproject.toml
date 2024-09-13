@@ -7,10 +7,8 @@ git_describe_command= 'git describe --tags --abbrev=0 --dirty --match "depth_any
 tag_regex = "^depth_anything_v2_v(?P<version>.*)$"
 
 [tool.setuptools.packages.find]
-where = ["."]  # list of folders that contain the packages (["."] by default)
-include = ["depth_anything_v2"]  # package names should match these glob patterns (["*"] by default)
-exclude = []  # exclude packages matching these glob patterns (empty by default)
-namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+where = ["depth_anything_v2"]
+namespaces = false
 
 [project]
 name = "depth-anything-v2"
