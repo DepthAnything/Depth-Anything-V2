@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["depth_anything_v2/**/*.py"]
+include = ["depth_anything_v2/**"]
 namespaces = false
 
 [project]
