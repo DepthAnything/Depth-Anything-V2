@@ -48,8 +48,7 @@ def apply_min_size(sample, size, image_interpolation_method=cv2.INTER_AREA):
 
 
 class Resize(object):
-    """Resize sample to given size (width, height).
-    """
+    """Resize sample to given size (width, height)."""
 
     def __init__(
         self,
@@ -190,8 +189,12 @@ class Resize(object):
                 # sample["semseg_mask"] = cv2.resize(
                 #     sample["semseg_mask"], (width, height), interpolation=cv2.INTER_NEAREST
                 # )
-                sample["semseg_mask"] = F.interpolate(torch.from_numpy(sample["semseg_mask"]).float()[None, None, ...], (height, width), mode='nearest').numpy()[0, 0]
-                
+                sample["semseg_mask"] = F.interpolate(
+                    torch.from_numpy(sample["semseg_mask"]).float()[None, None, ...],
+                    (height, width),
+                    mode="nearest",
+                ).numpy()[0, 0]
+
             if "mask" in sample:
                 sample["mask"] = cv2.resize(
                     sample["mask"].astype(np.float32),
@@ -205,8 +208,7 @@ class Resize(object):
 
 
 class NormalizeImage(object):
-    """Normlize image by given mean and std.
-    """
+    """Normlize image by given mean and std."""
 
     def __init__(self, mean, std):
         self.__mean = mean
@@ -219,8 +221,7 @@ class NormalizeImage(object):
 
 
 class PrepareForNet(object):
-    """Prepare sample for usage as network input.
-    """
+    """Prepare sample for usage as network input."""
 
     def __init__(self):
         pass
@@ -232,11 +233,11 @@ class PrepareForNet(object):
         if "mask" in sample:
             sample["mask"] = sample["mask"].astype(np.float32)
             sample["mask"] = np.ascontiguousarray(sample["mask"])
-        
+
         if "depth" in sample:
             depth = sample["depth"].astype(np.float32)
             sample["depth"] = np.ascontiguousarray(depth)
-            
+
         if "semseg_mask" in sample:
             sample["semseg_mask"] = sample["semseg_mask"].astype(np.float32)
             sample["semseg_mask"] = np.ascontiguousarray(sample["semseg_mask"])
@@ -245,8 +246,7 @@ class PrepareForNet(object):
 
 
 class Crop(object):
-    """Crop sample for batch-wise training. Image is of shape CxHxW
-    """
+    """Crop sample for batch-wise training. Image is of shape CxHxW"""
 
     def __init__(self, size):
         if isinstance(size, int):
@@ -255,23 +255,23 @@ class Crop(object):
             self.size = size
 
     def __call__(self, sample):
-        h, w = sample['image'].shape[-2:]
-        assert h >= self.size[0] and w >= self.size[1], 'Wrong size'
-        
+        h, w = sample["image"].shape[-2:]
+        assert h >= self.size[0] and w >= self.size[1], "Wrong size"
+
         h_start = np.random.randint(0, h - self.size[0] + 1)
         w_start = np.random.randint(0, w - self.size[1] + 1)
         h_end = h_start + self.size[0]
         w_end = w_start + self.size[1]
-        
-        sample['image'] = sample['image'][:, h_start: h_end, w_start: w_end]
-        
+
+        sample["image"] = sample["image"][:, h_start:h_end, w_start:w_end]
+
         if "depth" in sample:
-            sample["depth"] = sample["depth"][h_start: h_end, w_start: w_end]
-        
+            sample["depth"] = sample["depth"][h_start:h_end, w_start:w_end]
+
         if "mask" in sample:
-            sample["mask"] = sample["mask"][h_start: h_end, w_start: w_end]
-            
+            sample["mask"] = sample["mask"][h_start:h_end, w_start:w_end]
+
         if "semseg_mask" in sample:
-            sample["semseg_mask"] = sample["semseg_mask"][h_start: h_end, w_start: w_end]
-            
+            sample["semseg_mask"] = sample["semseg_mask"][h_start:h_end, w_start:w_end]
+
         return sample

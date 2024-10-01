@@ -3,8 +3,7 @@ import cv2
 
 
 class Resize(object):
-    """Resize sample to given size (width, height).
-    """
+    """Resize sample to given size (width, height)."""
 
     def __init__(
         self,
@@ -90,14 +89,24 @@ class Resize(object):
                     # fit height
                     scale_width = scale_height
             else:
-                raise ValueError(f"resize_method {self.__resize_method} not implemented")
+                raise ValueError(
+                    f"resize_method {self.__resize_method} not implemented"
+                )
 
         if self.__resize_method == "lower_bound":
-            new_height = self.constrain_to_multiple_of(scale_height * height, min_val=self.__height)
-            new_width = self.constrain_to_multiple_of(scale_width * width, min_val=self.__width)
+            new_height = self.constrain_to_multiple_of(
+                scale_height * height, min_val=self.__height
+            )
+            new_width = self.constrain_to_multiple_of(
+                scale_width * width, min_val=self.__width
+            )
         elif self.__resize_method == "upper_bound":
-            new_height = self.constrain_to_multiple_of(scale_height * height, max_val=self.__height)
-            new_width = self.constrain_to_multiple_of(scale_width * width, max_val=self.__width)
+            new_height = self.constrain_to_multiple_of(
+                scale_height * height, max_val=self.__height
+            )
+            new_width = self.constrain_to_multiple_of(
+                scale_width * width, max_val=self.__width
+            )
         elif self.__resize_method == "minimal":
             new_height = self.constrain_to_multiple_of(scale_height * height)
             new_width = self.constrain_to_multiple_of(scale_width * width)
@@ -107,24 +116,35 @@ class Resize(object):
         return (new_width, new_height)
 
     def __call__(self, sample):
-        width, height = self.get_size(sample["image"].shape[1], sample["image"].shape[0])
-        
+        width, height = self.get_size(
+            sample["image"].shape[1], sample["image"].shape[0]
+        )
+
         # resize sample
-        sample["image"] = cv2.resize(sample["image"], (width, height), interpolation=self.__image_interpolation_method)
+        sample["image"] = cv2.resize(
+            sample["image"],
+            (width, height),
+            interpolation=self.__image_interpolation_method,
+        )
 
         if self.__resize_target:
             if "depth" in sample:
-                sample["depth"] = cv2.resize(sample["depth"], (width, height), interpolation=cv2.INTER_NEAREST)
-                
+                sample["depth"] = cv2.resize(
+                    sample["depth"], (width, height), interpolation=cv2.INTER_NEAREST
+                )
+
             if "mask" in sample:
-                sample["mask"] = cv2.resize(sample["mask"].astype(np.float32), (width, height), interpolation=cv2.INTER_NEAREST)
-        
+                sample["mask"] = cv2.resize(
+                    sample["mask"].astype(np.float32),
+                    (width, height),
+                    interpolation=cv2.INTER_NEAREST,
+                )
+
         return sample
 
 
 class NormalizeImage(object):
-    """Normlize image by given mean and std.
-    """
+    """Normlize image by given mean and std."""
 
     def __init__(self, mean, std):
         self.__mean = mean
@@ -137,8 +157,7 @@ class NormalizeImage(object):
 
 
 class PrepareForNet(object):
-    """Prepare sample for usage as network input.
-    """
+    """Prepare sample for usage as network input."""
 
     def __init__(self):
         pass
@@ -150,9 +169,9 @@ class PrepareForNet(object):
         if "depth" in sample:
             depth = sample["depth"].astype(np.float32)
             sample["depth"] = np.ascontiguousarray(depth)
-        
+
         if "mask" in sample:
             sample["mask"] = sample["mask"].astype(np.float32)
             sample["mask"] = np.ascontiguousarray(sample["mask"])
-        
+
         return sample
