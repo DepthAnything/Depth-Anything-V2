@@ -160,6 +160,7 @@ Please refer to [DA-2K benchmark](./DA-2K.md).
     - https://github.com/spacewalk01/depth-anything-tensorrt
     - https://github.com/zhujiajian98/Depth-Anythingv2-TensorRT-python
 - ONNX: https://github.com/fabio-sim/Depth-Anything-ONNX
+- UI with crop region: https://github.com/vnk8071/depth-anything-onnx-tensorrt
 - ComfyUI: https://github.com/kijai/ComfyUI-DepthAnythingV2
 - Transformers.js (real-time depth in web): https://huggingface.co/spaces/Xenova/webgpu-realtime-depth-estimation
 - Android:
