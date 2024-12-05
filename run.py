@@ -1,7 +1,7 @@
 import argparse
 import cv2
 import glob
-import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import torch
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     
     os.makedirs(args.outdir, exist_ok=True)
     
-    cmap = matplotlib.colormaps.get_cmap('Spectral_r')
+    cmap = plt.get_cmap('Spectral_r')
     
     for k, filename in enumerate(filenames):
         print(f'Progress {k+1}/{len(filenames)}: {filename}')
