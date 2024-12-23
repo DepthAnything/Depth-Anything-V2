@@ -164,7 +164,8 @@ Please refer to [DA-2K benchmark](./DA-2K.md).
 - Transformers.js (real-time depth in web): https://huggingface.co/spaces/Xenova/webgpu-realtime-depth-estimation
 - Android:
   - https://github.com/shubham0204/Depth-Anything-Android
-  - https://github.com/FeiGeChuanShu/ncnn-android-depth_anything
+- The Foundry's Nuke
+  - https://github.com/rafaelperez/Depth-Anything-for-Nuke
 
 
 ## Acknowledgement
