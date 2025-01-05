@@ -4,3 +4,4 @@ matplotlib
 opencv-python
 torch
 torchvision
+xformers
