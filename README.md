@@ -73,6 +73,39 @@ To visualize the generated point cloud:
 python view_ply.py <path_to_ply_file>
 ```
 
+### 5. Point Cloud Comparison
+
+To generate and compare point clouds from different depth sources:
+
+```bash
+python compare_pointclouds.py
+```
+
+This will:
+- Generate point clouds from RealSense D455, Depth-Anything-V2, and fused depth
+- Create distance distribution histograms
+- Save point clouds as PLY files in the `pointcloud_comparison` directory
+- Save histograms as PNG files
+
+Example input data:
+- RGB Image: `assets/examples/DC-510/kitchen/kitchen_5_Color.png`
+![Kitchen RGB Image](assets/examples/DC-510/kitchen/kitchen_5_Color.png)
+- Depth Image: `assets/examples/DC-510/kitchen/kitchen_5_Depth.png`
+![Kitchen Depth Image](assets/examples/DC-510/kitchen/kitchen_5_Depth.png)
+
+The comparison results can be viewed in:
+- `pointcloud_comparison/combined_histogram.png`: Combined distance distribution comparison
+![Combined Distance Distribution](pointcloud_comparison/combined_histogram.png)
+
+To view individual point clouds:
+```bash
+python view_ply.py pointcloud_comparison/realsense.ply  # RealSense D455 (Filtered)
+python view_ply.py pointcloud_comparison/depth_anything.ply  # Depth-Anything-V2
+python view_ply.py pointcloud_comparison/fused.ply  # Fused Depth
+```
+
+For detailed comparison results and visualizations, see the [Point Cloud Comparison Results](https://docs.google.com/presentation/d/1BSeugKh_94BREHsL3uTXQn6r7ntAcwKrA2Rmn_I-nS8/edit?usp=sharing).
+
 ## Input Data Format
 
 The system expects the following input files:
