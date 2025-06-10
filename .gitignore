@@ -4,3 +4,4 @@ checkpoints
 depth_anything_v2
 pointcloud_vis
 *.png
+__pycache__/
