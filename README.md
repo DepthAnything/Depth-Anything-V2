@@ -18,13 +18,11 @@ The system uses two main metrics to evaluate the quality of depth fusion:
 ### MAE (Mean Absolute Error)
 - Measures the average absolute difference between predicted and ground truth depth values
 - Lower values indicate better fusion quality
-- 平均绝对误差：测量预测深度值与真实深度值之间的平均绝对差异，值越小表示融合效果越好
 
 ### SSIM (Structural Similarity Index Measure)
 - Evaluates how well the fused depth map preserves structural details
 - Considers structural information, luminance, and contrast
 - Values range from 0 to 1, with 1 indicating perfect structural similarity
-- 结构相似性指数：评估融合深度图保留结构细节的程度，考虑了结构信息、亮度和对比度，值越接近1表示结构相似性越好
 
 ## Requirements
 
@@ -123,7 +121,7 @@ The fusion process generates:
 ## Model Options
 
 Depth-Anything-V2 supports multiple encoder variants:
-- `vits`: Small ViT encoder
+- `vits`: Small ViT encoder (inference time: ~0.03s after warm-up)
 - `vitb`: Base ViT encoder
 - `vitl`: Large ViT encoder
 - `vitg`: Giant ViT encoder

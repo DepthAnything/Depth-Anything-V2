@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from depth_anything_v2.dpt import DepthAnythingV2
 from fuse_depth import parse_realsense_depth, scale_depth_anything, fuse_depth_advanced
 import os
+import time
 
 # Set Open3D visualization backend
 o3d.visualization.webrtc_server.enable_webrtc = False
@@ -157,11 +158,19 @@ def main():
     depth_anything.load_state_dict(torch.load(f'checkpoints/depth_anything_v2_{encoder}.pth', map_location='cpu'))
     depth_anything = depth_anything.to(DEVICE).eval()
     
-    # Get Depth-Anything prediction
+    # Warm-up run
+    print("\nWarming up Depth-Anything-V2...")
+    _ = depth_anything.infer_image(rgb_image, d455_depth.shape[0])
+
+    # Get Depth-Anything prediction with timing
+    start_time = time.time()
     da_depth = depth_anything.infer_image(rgb_image, d455_depth.shape[0])
+    inference_time = time.time() - start_time
+    print(f"Depth-Anything-V2 inference time (after warm-up): {inference_time:.2f} seconds")
+
     da_depth = da_depth.astype(np.float32)
     da_depth = cv2.resize(da_depth, (d455_depth.shape[1], d455_depth.shape[0]), interpolation=cv2.INTER_LINEAR)
-    
+
     # Scale Depth-Anything depth
     da_depth_scaled = scale_depth_anything(d455_depth_median, da_depth)  # Use filtered depth for scaling
     
