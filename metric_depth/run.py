@@ -50,7 +50,7 @@ if __name__ == '__main__':
     
     os.makedirs(args.outdir, exist_ok=True)
     
-    cmap = matplotlib.colormaps.get_cmap('Spectral')
+    cmap = matplotlib.colormaps['Spectral']
     
     for k, filename in enumerate(filenames):
         print(f'Progress {k+1}/{len(filenames)}: {filename}')
