@@ -18,7 +18,7 @@ from dataset.hypersim import Hypersim
 from dataset.kitti import KITTI
 from dataset.vkitti2 import VKITTI2
 from depth_anything_v2.dpt import DepthAnythingV2
-from metric_depth.dataset.us3d import US3D
+from dataset.us3d import US3D
 from util.dist_helper import setup_distributed
 from util.loss import SiLogLoss
 from util.metric import eval_depth

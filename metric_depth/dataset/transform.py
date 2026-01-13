@@ -1,3 +1,5 @@
+import random
+
 import cv2
 import math
 import numpy as np
@@ -52,14 +54,14 @@ class Resize(object):
     """
 
     def __init__(
-        self,
-        width,
-        height,
-        resize_target=True,
-        keep_aspect_ratio=False,
-        ensure_multiple_of=1,
-        resize_method="lower_bound",
-        image_interpolation_method=cv2.INTER_AREA,
+            self,
+            width,
+            height,
+            resize_target=True,
+            keep_aspect_ratio=False,
+            ensure_multiple_of=1,
+            resize_method="lower_bound",
+            image_interpolation_method=cv2.INTER_AREA,
     ):
         """Init.
 
@@ -190,8 +192,10 @@ class Resize(object):
                 # sample["semseg_mask"] = cv2.resize(
                 #     sample["semseg_mask"], (width, height), interpolation=cv2.INTER_NEAREST
                 # )
-                sample["semseg_mask"] = F.interpolate(torch.from_numpy(sample["semseg_mask"]).float()[None, None, ...], (height, width), mode='nearest').numpy()[0, 0]
-                
+                sample["semseg_mask"] = \
+                F.interpolate(torch.from_numpy(sample["semseg_mask"]).float()[None, None, ...], (height, width),
+                              mode='nearest').numpy()[0, 0]
+
             if "mask" in sample:
                 sample["mask"] = cv2.resize(
                     sample["mask"].astype(np.float32),
@@ -232,11 +236,11 @@ class PrepareForNet(object):
         if "mask" in sample:
             sample["mask"] = sample["mask"].astype(np.float32)
             sample["mask"] = np.ascontiguousarray(sample["mask"])
-        
+
         if "depth" in sample:
             depth = sample["depth"].astype(np.float32)
             sample["depth"] = np.ascontiguousarray(depth)
-            
+
         if "semseg_mask" in sample:
             sample["semseg_mask"] = sample["semseg_mask"].astype(np.float32)
             sample["semseg_mask"] = np.ascontiguousarray(sample["semseg_mask"])
@@ -257,21 +261,38 @@ class Crop(object):
     def __call__(self, sample):
         h, w = sample['image'].shape[-2:]
         assert h >= self.size[0] and w >= self.size[1], 'Wrong size'
-        
+
         h_start = np.random.randint(0, h - self.size[0] + 1)
         w_start = np.random.randint(0, w - self.size[1] + 1)
         h_end = h_start + self.size[0]
         w_end = w_start + self.size[1]
-        
+
         sample['image'] = sample['image'][:, h_start: h_end, w_start: w_end]
-        
+
         if "depth" in sample:
             sample["depth"] = sample["depth"][h_start: h_end, w_start: w_end]
-        
+
         if "mask" in sample:
             sample["mask"] = sample["mask"][h_start: h_end, w_start: w_end]
-            
+
         if "semseg_mask" in sample:
             sample["semseg_mask"] = sample["semseg_mask"][h_start: h_end, w_start: w_end]
-            
+
+        return sample
+
+
+class RandomHorizontalFlip:
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, sample):
+        if random.random() < self.p:
+            sample['image'] = np.ascontiguousarray(np.flip(sample['image'], axis=1))
+            sample['depth'] = np.ascontiguousarray(np.flip(sample['depth'], axis=1))
+
+            if 'semantics' in sample and sample['semantics'] is not None:
+                sample['semantics'] = np.ascontiguousarray(
+                    np.flip(sample['semantics'], axis=1)
+                )
+
         return sample

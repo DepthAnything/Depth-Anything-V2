@@ -33,6 +33,10 @@ class US3D(Dataset):
             PrepareForNet(),
         ])
 
+    @staticmethod
+    def transform_height(z):
+        return np.sign(z) * np.log1p(np.abs(z))
+
     def __len__(self):
         return len(self.filelist)
 
@@ -50,8 +54,10 @@ class US3D(Dataset):
         height_map = cv2.imread(height_path, cv2.IMREAD_UNCHANGED)
         if height_map is None:
             raise FileNotFoundError(f"Height map not found: {height_path}")
+
         height_map = height_map.astype('float32')
-        height_map = np.clip(height_map, 0, None)
+
+        height_map = self.transform_height(height_map)
 
         semantics = None
         if semantic_path:
@@ -68,7 +74,7 @@ class US3D(Dataset):
         sample['image'] = torch.from_numpy(sample['image']).float()
         sample['depth'] = torch.from_numpy(sample['depth']).float()
 
-        sample['valid_mask'] = (torch.isnan(sample['depth']) == 0)
+        sample['valid_mask'] = torch.isfinite(sample['depth']) & (sample['depth'] > 0)
 
         if semantics is not None:
             sample['semantics'] = torch.from_numpy(sample['semantics']).long()
