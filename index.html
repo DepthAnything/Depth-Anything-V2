@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DepthVision Static Processor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .viewer, .controls, .analysis-container, .point-analysis-container {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .controls, .analysis-container, .point-analysis-container {
+             grid-column: span 2;
+             margin-bottom: 20px;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            background: #eee;
+        }
+        #originalCanvas {
+             cursor: crosshair;
+        }
+        .metrics {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .metric {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .metric-value { font-size: 24px; font-weight: bold; margin: 5px 0; }
+        .metric-label { font-size: 14px; color: #666; }
+        button {
+            background: #4CAF50; color: white; border: none;
+            padding: 10px 15px; border-radius: 4px; cursor: pointer;
+            font-size: 16px; margin-right: 10px; vertical-align: middle;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #cccccc; cursor: not-allowed; }
+        #histogram { width: 100%; height: 300px; }
+        .status { padding: 10px; border-radius: 4px; margin-top: 10px; }
+        .processing { background: #fff3cd; color: #856404; }
+        .ready { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .analysis-results table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .analysis-results th, .analysis-results td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .analysis-results th { background-color: #f2f2f2; }
+        .analysis-controls { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+        .analysis-controls label { margin-right: 10px; font-weight: bold; }
+        .analysis-controls input {
+            padding: 5px; border-radius: 4px; border: 1px solid #ccc;
+            width: 80px; vertical-align: middle;
+        }
+        .point-analysis-container h2, .analysis-container h2 { margin-top: 0; }
+        #pointEvolutionChart {
+            width: 100%; height: 400px; background: white;
+            border-radius: 8px; padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .frame-navigation {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .frame-navigation input[type="range"] {
+            flex-grow: 1;
+        }
+        #frameCounter {
+            min-width: 100px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>DepthVision Static Processor</h1>
+
+    <div class="controls">
+        <input type="file" id="videoInput" accept="video/*" style="display: none;">
+        <button id="selectBtn">Select Video File</button>
+        <button id="processBtn" disabled>Process Frames</button>
+        <button id="stopBtn" disabled>Stop Processing</button>
+        <button id="startRecordingBtn">Iniciar Grabación</button>
+        <button id="stopRecordingBtn" disabled>Detener Grabación</button>
+        <div id="status" class="status">Ready to select video file</div>
+
+        <div id="analysisControls" class="analysis-controls" style="display: none;">
+            <label for="noiseThreshold">Noise Threshold:</label>
+            <input type="number" id="noiseThreshold" value="0.01" step="0.001">
+            <button id="analyzeVolumeBtn" disabled>Analyze Volume</button>
+            <button id="analyzePointsBtn" disabled>Analyze Selected Points</button>
+            <button id="clearPointsBtn" disabled>Clear Points</button>
+            <button id="exportBtn" disabled>Export Data</button>
+        </div>
+
+        <div id="videoProgressContainer" style="display: none; margin-bottom: 20px;">
+            <label for="videoProgressBar">Progreso:</label>
+            <progress id="videoProgressBar" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+            <div id="videoProgressText" style="margin-top: 5px; font-weight: bold;">0%</div>
+        </div>
+
+        <div id="frameNavigation" class="frame-navigation" style="display: none;">
+            <button id="prevFrameBtn" disabled>Anterior</button>
+            <input type="range" id="frameSlider" min="0" max="100" value="0" style="width: 300px;">
+            <button id="nextFrameBtn" disabled>Siguiente</button>
+            <span id="frameCounter">Frame 0/0</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="viewer">
+            <h2>Original Frame (Click to Select Points)</h2>
+            <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="viewer"><h2>Depth Map</h2><canvas id="depthCanvas"></canvas></div>
+        <div class="metrics">
+            <div class="metric"><div class="metric-label">Minimum Depth</div><div class="metric-value" id="minValue">0.0000</div></div>
+            <div class="metric"><div class="metric-label">Maximum Depth</div><div class="metric-value" id="maxValue">0.0000</div></div>
+            <div class="metric"><div class="metric-label">Mean Depth</div><div class="metric-value" id="meanValue">0.0000</div></div>
+            <div class="metric"><div class="metric-label">Standard Deviation</div><div class="metric-value" id="stdValue">0.0000</div></div>
+        </div>
+        <div style="grid-column: span 2;"><h2>Depth Distribution</h2><div id="histogram"></div></div>
+    </div>
+    
+    <div class="analysis-container" id="analysisResultsContainer" style="display: none;">
+        <h2>Volume Analysis Results</h2>
+        <div class="analysis-results" id="analysisResults"></div>
+    </div>
+
+    <div class="point-analysis-container" id="pointAnalysisContainer" style="display: none;">
+        <h2>Point Depth Evolution</h2>
+        <div id="pointEvolutionChart"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script>
+        // --- Global Variables ---
+        let videoFile = null, videoElement = document.createElement('video'), isProcessing = false;
+        let currentFrame = 0, totalFrames = 0, histogramChart = null, db = null, sessionId = null;
+        let selectedPoints = [], pointChart = null, hoveredPoint = null;
+        let currentFrameSource = null; // Fuente unificada para frames (video o imagen)
+
+        // --- DOM Elements ---
+        const selectBtn = document.getElementById('selectBtn'), processBtn = document.getElementById('processBtn');
+        const stopBtn = document.getElementById('stopBtn'), exportBtn = document.getElementById('exportBtn');
+        const analyzeVolumeBtn = document.getElementById('analyzeVolumeBtn'), analyzePointsBtn = document.getElementById('analyzePointsBtn');
+        const clearPointsBtn = document.getElementById('clearPointsBtn'), analysisControls = document.getElementById('analysisControls');
+        const statusDiv = document.getElementById('status'), originalCanvas = document.getElementById('originalCanvas');
+        const depthCanvas = document.getElementById('depthCanvas'), minValue = document.getElementById('minValue');
+        const maxValue = document.getElementById('maxValue'), meanValue = document.getElementById('meanValue');
+        const stdValue = document.getElementById('stdValue'), histogramEl = document.getElementById('histogram');
+        const analysisResultsContainer = document.getElementById('analysisResultsContainer');
+        const analysisResultsDiv = document.getElementById('analysisResults'), pointAnalysisContainer = document.getElementById('pointAnalysisContainer');
+        const pointEvolutionChartEl = document.getElementById('pointEvolutionChart');
+        const startRecordingBtn = document.getElementById('startRecordingBtn');
+        const stopRecordingBtn = document.getElementById('stopRecordingBtn');
+        const videoProgressContainer = document.getElementById('videoProgressContainer');
+        const videoProgressBar = document.getElementById('videoProgressBar');
+        const videoProgressText = document.getElementById('videoProgressText');
+        const prevFrameBtn = document.getElementById('prevFrameBtn');
+        const nextFrameBtn = document.getElementById('nextFrameBtn');
+        const frameSlider = document.getElementById('frameSlider');
+        const frameCounter = document.getElementById('frameCounter');
+        const frameNavigation = document.getElementById('frameNavigation');
+
+        // --- Core Functions ---
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('DepthVisionDB', 2);
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains('metrics')) {
+                        db.createObjectStore('metrics', { keyPath: 'id' });
+                    }
+                    if (db.objectStoreNames.contains('frames')) {
+                        db.deleteObjectStore('frames');
+                    }
+                };
+                request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+                request.onerror = (event) => { console.error('Database error:', event.target.error); reject('Error opening database'); };
+            });
+        }
+
+        function saveMetrics(frameId, metrics) {
+            if (!db) return Promise.reject("Database not initialized.");
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['metrics'], 'readwrite');
+                const metricStore = transaction.objectStore('metrics');
+                metricStore.put({ id: `${sessionId}-${frameId}`, ...metrics });
+                transaction.oncomplete = resolve;
+                transaction.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        async function getDepthFromBackend(imageData, currentSessionId, frameIndex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+            canvas.getContext('2d').putImageData(imageData, 0, 0);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            const formData = new FormData();
+            formData.append('file', blob, 'frame.jpg');
+            formData.append('session_id', currentSessionId);
+            formData.append('frame_index', frameIndex);
+            const response = await fetch('http://192.168.1.42:8000/predict', { 
+                method: 'POST', 
+                body: formData 
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Backend Error: ${response.status} ${errorText}`);
+            }
+            return await response.json();
+        }
+        
+        function drawOriginalFrame(source, clearPoints = false) {
+            const canvas = originalCanvas;
+            let vw, vh;
+            
+            if (source) {
+                // Manejar diferentes tipos de fuente (video o imagen)
+                if (source instanceof HTMLVideoElement) {
+                    vw = source.videoWidth;
+                    vh = source.videoHeight;
+                } else if (source instanceof HTMLImageElement) {
+                    vw = source.naturalWidth;
+                    vh = source.naturalHeight;
+                } else {
+                    vw = canvas.width;
+                    vh = canvas.height;
+                }
+            } else {
+                vw = canvas.width;
+                vh = canvas.height;
+            }
+
+            if (vw === 0) return;
+            canvas.width = vw;
+            canvas.height = vh;
+            const ctx = canvas.getContext('2d');
+            
+            // Limpiar y dibujar la fuente si está disponible
+            if (source) {
+                ctx.drawImage(source, 0, 0, vw, vh);
+            } else {
+                ctx.clearRect(0, 0, vw, vh);
+            }
+            
+            // Manejar puntos seleccionados
+            if (clearPoints) selectedPoints = [];
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            selectedPoints.forEach(p => {
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            });
+            
+            // Dibujar punto hover si existe
+            if (hoveredPoint) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.fillRect(hoveredPoint.x + 10, hoveredPoint.y - 25, 80, 20);
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`(${hoveredPoint.x}, ${hoveredPoint.y})`, hoveredPoint.x + 15, hoveredPoint.y - 15);
+            }
+        }
+        
+        async function processFrame(frameImage) {
+            const vw = frameImage.videoWidth || frameImage.naturalWidth;
+            const vh = frameImage.videoHeight || frameImage.naturalHeight;
+            if (vw === 0 || vh === 0) throw new Error("Video dimensions not available.");
+            drawOriginalFrame(frameImage);
+            const imageData = originalCanvas.getContext('2d').getImageData(0, 0, vw, vh);
+            const result = await getDepthFromBackend(imageData, sessionId, currentFrame);
+            const metrics = { min: result.min, max: result.max, mean: result.mean, std: result.std };
+            depthCanvas.width = vw;
+            depthCanvas.height = vh;
+            const depthCtx = depthCanvas.getContext('2d');
+            const depthImageData = depthCtx.createImageData(vw, vh);
+            const colormap = Array.from({ length: 256 }, (_, i) => {
+                const t = i / 255;
+                const r = Math.min(255, 255 * Math.pow(t, 0.5) + 10);
+                const g = Math.min(255, 255 * Math.pow(t, 1.0));
+                const b = Math.min(255, 255 * Math.pow(t, 2.0) + 20);
+                return [r, g, b];
+            });
+            for (let y = 0; y < vh; y++) {
+                for (let x = 0; x < vw; x++) {
+                    const idx = (y * vw + x) * 4;
+                    if (result.depth && result.depth[y] !== undefined) {
+                        const color = colormap[Math.min(255, Math.floor(result.depth[y][x] * 255))];
+                        depthImageData.data.set(color, idx);
+                        depthImageData.data[idx + 3] = 255;
+                    }
+                }
+            }
+            depthCtx.putImageData(depthImageData, 0, 0);
+            minValue.textContent = metrics.min.toFixed(4);
+            maxValue.textContent = metrics.max.toFixed(4);
+            meanValue.textContent = metrics.mean.toFixed(4);
+            stdValue.textContent = metrics.std.toFixed(4);
+            updateHistogram(result.depth.flat());
+            return metrics;
+        }
+
+        async function processVideo() {
+            if (!isProcessing) return;
+            videoElement.currentTime = currentFrame / 30;
+            await new Promise(resolve => { videoElement.onseeked = resolve; });
+            try {
+                updateStatus(`Processing frame ${currentFrame + 1} of ${totalFrames}...`, 'processing');
+                const metrics = await processFrame(videoElement);
+                await saveMetrics(currentFrame, metrics);
+                currentFrame++;
+                if (currentFrame < totalFrames && isProcessing) {
+                    requestAnimationFrame(processVideo);
+                } else {
+                    isProcessing = false;
+                    updateStatus(`Processing complete. ${totalFrames} frames saved. Ready for analysis.`, 'ready');
+                    processBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    analyzeVolumeBtn.disabled = false;
+                    exportBtn.disabled = false;
+                    if (selectedPoints.length > 0) analyzePointsBtn.disabled = false;
+                }
+            } catch (error) {
+                isProcessing = false;
+                updateStatus(`Error on frame ${currentFrame + 1}: ${error.message}`, 'error');
+                console.error(error);
+                processBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        async function analyzeVolume() {
+            if (!sessionId) { 
+                updateStatus("No session ID found.", 'error');
+                return; 
+            }
+            updateStatus(`Analyzing volume for session: ${sessionId}...`, 'processing');
+            analyzeVolumeBtn.disabled = true;
+            analysisResultsContainer.style.display = 'none';
+            const noiseThreshold = parseFloat(document.getElementById('noiseThreshold').value);
+            try {
+                const response = await fetch(`http://192.168.1.42:8000/analyze/${sessionId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ noise_threshold: noiseThreshold })
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Analysis failed: ${response.status} ${errorText}`);
+                }
+                const results = await response.json();
+                displayAnalysisResults(results.analysis);
+                updateStatus('Volume analysis complete.', 'ready');
+            } catch (error) {
+                updateStatus(`Analysis Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                analyzeVolumeBtn.disabled = false;
+            }
+        }
+
+        function displayAnalysisResults(analysisData) {
+            if (!analysisData || analysisData.length === 0) {
+                analysisResultsDiv.innerHTML = '<p>No volume analysis data to display.</p>';
+            } else {
+                let tableHTML = `<table><thead><tr><th>Frame (vs. Frame 0)</th><th>Volume Change</th><th>Added Volume</th><th>Removed Volume</th><th>Mean Depth Change</th><th>Changed Area (%)</th></tr></thead><tbody>`;
+                analysisData.forEach(frame => {
+                    tableHTML += `<tr><td>${frame.frame_index}</td><td>${frame.volume_change.toFixed(4)}</td><td>${frame.added_volume.toFixed(4)}</td><td>${frame.removed_volume.toFixed(4)}</td><td>${frame.mean_depth_change.toExponential(4)}</td><td>${frame.changed_area_percent.toFixed(2)}%</td></tr>`;
+                });
+                tableHTML += '</tbody></table>';
+                analysisResultsDiv.innerHTML = tableHTML;
+            }
+            analysisResultsContainer.style.display = 'block';
+        }
+        
+        async function analyzeSelectedPoints() {
+            if (!sessionId || selectedPoints.length === 0) {
+                updateStatus("Please select at least one point on the original frame first.", 'error');
+                return;
+            }
+            updateStatus(`Analyzing ${selectedPoints.length} selected points...`, 'processing');
+            analyzePointsBtn.disabled = true;
+            try {
+                const response = await fetch(`http://192.168.1.42:8000/analyze-points/${sessionId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ points: selectedPoints })
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Analysis failed: ${errorText}`);
+                }
+                const results = await response.json();
+                displayPointEvolutionChart(results.point_analysis);
+                updateStatus('Point analysis complete.', 'ready');
+            } catch (error) {
+                updateStatus(`Point Analysis Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                analyzePointsBtn.disabled = false;
+            }
+        }
+        
+        function displayPointEvolutionChart(pointData) {
+            if (!pointData || pointData.length === 0) {
+                pointAnalysisContainer.innerHTML = '<p>No point analysis data to display.</p>';
+                return;
+            }
+            pointAnalysisContainer.style.display = 'block';
+            if (!pointChart) pointChart = echarts.init(pointEvolutionChartEl);
+            const series = pointData.map(d => ({ 
+                name: d.label, 
+                type: 'line', 
+                smooth: true, 
+                data: d.depth_values,
+                symbol: 'circle',
+                symbolSize: 8,
+                lineStyle: { width: 3 }
+            }));
+            const legendData = pointData.map(d => d.label);
+            const option = {
+                tooltip: { 
+                    trigger: 'axis',
+                    formatter: params => {
+                        let result = `Frame: ${params[0].axisValue}<br>`;
+                        params.forEach(param => {
+                            result += `${param.seriesName}: ${param.value.toFixed(4)}<br>`;
+                        });
+                        return result;
+                    }
+                },
+                legend: { 
+                    data: legendData,
+                    type: 'scroll',
+                    bottom: 0
+                },
+                xAxis: { 
+                    type: 'category', 
+                    name: 'Frame Index', 
+                    boundaryGap: false,
+                    axisLabel: { rotate: 45 }
+                },
+                yAxis: { 
+                    type: 'value', 
+                    name: 'Raw Depth', 
+                    scale: true 
+                },
+                series: series,
+                dataZoom: [
+                    { 
+                        type: 'inside',
+                        xAxisIndex: 0,
+                        filterMode: 'filter'
+                    }, 
+                    { 
+                        type: 'slider',
+                        xAxisIndex: 0,
+                        filterMode: 'filter',
+                        height: 20,
+                        bottom: 30
+                    }
+                ],
+                grid: {
+                    bottom: '20%'
+                }
+            };
+            pointChart.setOption(option, true);
+            window.addEventListener('resize', function() {
+                pointChart.resize();
+            });
+        }
+
+        function updateHistogram(flatDepthData) {
+            if (!histogramChart) histogramChart = echarts.init(histogramEl);
+            const bins = 20, min = 0, max = 1;
+            const step = (max - min) / bins;
+            const histogram = new Array(bins).fill(0);
+            flatDepthData.forEach(value => {
+                const bin = Math.min(bins - 1, Math.floor((value - min) / step));
+                if (bin >= 0) histogram[bin]++;
+            });
+            const xAxisData = Array.from({ length: bins }, (_, i) => `${(min + i * step).toFixed(2)}`);
+            histogramChart.setOption({
+                tooltip: { 
+                    trigger: 'axis', 
+                    axisPointer: { type: 'shadow' },
+                    formatter: params => {
+                        return `Range: ${params[0].name}<br>Count: ${params[0].value}`;
+                    }
+                },
+                xAxis: { 
+                    type: 'category', 
+                    data: xAxisData, 
+                    name: 'Normalized Depth',
+                    axisLabel: { rotate: 45 }
+                },
+                yAxis: { 
+                    type: 'value', 
+                    name: 'Count' 
+                },
+                series: [{ 
+                    name: 'Depth Distribution', 
+                    type: 'bar', 
+                    data: histogram, 
+                    itemStyle: { 
+                        color: '#5470c6',
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    barWidth: '90%'
+                }],
+                dataZoom: [
+                    { 
+                        type: 'inside',
+                        xAxisIndex: 0,
+                        filterMode: 'filter'
+                    },
+                    { 
+                        type: 'slider',
+                        xAxisIndex: 0,
+                        filterMode: 'filter'
+                    }
+                ]
+            });
+            window.addEventListener('resize', function() {
+                histogramChart.resize();
+            });
+        }
+
+        function updateStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        async function exportMetricsData() { 
+            updateStatus("Export function not yet implemented.", 'processing');
+            alert("Export function not yet implemented."); 
+        }
+        
+        function clearSelectedPoints() {
+            selectedPoints = [];
+            hoveredPoint = null;
+            analyzePointsBtn.disabled = true;
+            clearPointsBtn.disabled = true;
+            drawOriginalFrame(currentFrameSource);
+            pointAnalysisContainer.style.display = 'none';
+        }
+
+        // --- Frame Navigation Functions ---
+        async function showFrame(frameIndex) {
+            if (frameIndex < 0 || frameIndex >= totalFrames) return;
+            
+            try {
+                videoProgressText.textContent = `Loading frame ${frameIndex + 1}/${totalFrames}`;
+                await loadFrame(frameIndex);
+                currentFrame = frameIndex;
+                
+                // Actualizar controles de navegación
+                updateFrameControls();
+                preloadAdjacentFrames();
+                
+            } catch (error) {
+                console.error("Error loading frame:", error);
+                updateStatus(`Error loading frame ${frameIndex}: ${error.message}`, 'error');
+                // Reintentar después de un breve retraso
+                setTimeout(() => showFrame(frameIndex), 500);
+            }
+        }
+
+        function updateFrameControls() {
+            frameSlider.max = totalFrames - 1;
+            frameSlider.value = currentFrame;
+            frameCounter.textContent = `Frame ${currentFrame + 1}/${totalFrames}`;
+            prevFrameBtn.disabled = currentFrame <= 0;
+            nextFrameBtn.disabled = currentFrame >= totalFrames - 1;
+            
+            // Actualizar progreso
+            const progressPercent = Math.round((currentFrame + 1) / totalFrames * 100);
+            videoProgressBar.value = progressPercent;
+            videoProgressText.textContent = `Frame ${currentFrame + 1}/${totalFrames} (${progressPercent}%)`;
+        }
+
+        async function loadFrame(frameIndex) {
+            const paddedIndex = String(frameIndex).padStart(5, '0');
+            const frameUrl = `http://192.168.1.42:8000/session_data/${sessionId}/recorded_frames/frame_${paddedIndex}.jpg`;
+            
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                
+                img.onload = () => {
+                    currentFrameSource = img;  // Establecer como fuente actual
+                    drawOriginalFrame(currentFrameSource);
+                    resolve();
+                };
+                
+                img.onerror = () => {
+                    reject(new Error(`Could not load frame ${frameIndex} from ${frameUrl}`));
+                };
+                
+                img.src = frameUrl + '?t=' + Date.now(); // Cache buster
+            });
+        }
+
+        function preloadAdjacentFrames() {
+            const preloadCount = 3;
+            for (let i = 1; i <= preloadCount; i++) {
+                if (currentFrame + i < totalFrames) {
+                    const nextFrameUrl = `http://192.168.1.42:8000/session_data/${sessionId}/recorded_frames/frame_${String(currentFrame + i).padStart(5, '0')}.jpg`;
+                    new Image().src = nextFrameUrl;
+                }
+                if (currentFrame - i >= 0) {
+                    const prevFrameUrl = `http://192.168.1.42:8000/session_data/${sessionId}/recorded_frames/frame_${String(currentFrame - i).padStart(5, '0')}.jpg`;
+                    new Image().src = prevFrameUrl;
+                }
+            }
+        }
+
+        // --- Event Listeners ---
+        selectBtn.addEventListener('click', () => document.getElementById('videoInput').click());
+        analyzeVolumeBtn.addEventListener('click', analyzeVolume);
+        analyzePointsBtn.addEventListener('click', analyzeSelectedPoints);
+        clearPointsBtn.addEventListener('click', clearSelectedPoints);
+        exportBtn.addEventListener('click', exportMetricsData);
+
+        originalCanvas.addEventListener('click', (e) => {
+            if (!currentFrameSource || isProcessing) return;
+            const rect = originalCanvas.getBoundingClientRect();
+            const scaleX = originalCanvas.width / rect.width;
+            const scaleY = originalCanvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            selectedPoints.push({ x, y });
+            drawOriginalFrame(currentFrameSource);
+            if (!isProcessing) analyzePointsBtn.disabled = false;
+            clearPointsBtn.disabled = false;
+        });
+        
+        originalCanvas.addEventListener('mousemove', (e) => {
+            if (!currentFrameSource || selectedPoints.length === 0) return;
+            const rect = originalCanvas.getBoundingClientRect();
+            const scaleX = originalCanvas.width / rect.width;
+            const scaleY = originalCanvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            let foundPoint = null;
+            for (const point of selectedPoints) {
+                const distance = Math.sqrt(Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2));
+                if (distance < 8) {
+                    foundPoint = point;
+                    break;
+                }
+            }
+            if (hoveredPoint !== foundPoint) {
+                hoveredPoint = foundPoint;
+                drawOriginalFrame(currentFrameSource);
+            }
+        });
+
+        originalCanvas.addEventListener('mouseout', () => {
+            if (hoveredPoint) {
+                hoveredPoint = null;
+                drawOriginalFrame(currentFrameSource);
+            }
+        });
+
+        document.getElementById('videoInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            videoFile = file;
+            sessionId = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+            analysisResultsContainer.style.display = 'none';
+            pointAnalysisContainer.style.display = 'none';
+            updateStatus('Initializing video...', 'processing');
+            try {
+                videoElement.src = URL.createObjectURL(videoFile);
+                await new Promise((resolve, reject) => {
+                    videoElement.onloadedmetadata = () => {
+                        totalFrames = Math.floor(videoElement.duration * 30);
+                        currentFrame = 0;
+                        currentFrameSource = videoElement;
+                        drawOriginalFrame(currentFrameSource, true);
+                        resolve();
+                    };
+                    videoElement.onerror = () => reject(new Error('Error loading video metadata'));
+                });
+                updateStatus(`Ready to process ${totalFrames} frames for session: ${sessionId}`, 'ready');
+                processBtn.disabled = false;
+                stopBtn.disabled = true;
+                analyzeVolumeBtn.disabled = true;
+                analyzePointsBtn.disabled = true;
+                clearPointsBtn.disabled = true;
+                exportBtn.disabled = true;
+                analysisControls.style.display = 'block';
+            } catch (error) {
+                updateStatus(`Error loading video: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        processBtn.addEventListener('click', async () => {
+            if (isProcessing) return;
+            
+            // Caso 1: Video cargado desde archivo
+            if (videoFile) {
+                isProcessing = true;
+                processBtn.disabled = true;
+                stopBtn.disabled = false;
+                analyzeVolumeBtn.disabled = true;
+                analyzePointsBtn.disabled = true;
+                clearPointsBtn.disabled = true;
+                exportBtn.disabled = true;
+                analysisResultsContainer.style.display = 'none';
+                pointAnalysisContainer.style.display = 'none';
+                processVideo();
+            } 
+            // Caso 2: Frames grabados
+            else if (sessionId && totalFrames > 0) {
+                isProcessing = true;
+                processBtn.disabled = true;
+                stopBtn.disabled = false;
+                analyzeVolumeBtn.disabled = true;
+                analyzePointsBtn.disabled = true;
+                clearPointsBtn.disabled = true;
+                exportBtn.disabled = true;
+                analysisResultsContainer.style.display = 'none';
+                pointAnalysisContainer.style.display = 'none';
+                
+                try {
+                    updateStatus(`Processing ${totalFrames} recorded frames...`, 'processing');
+                    
+                    for (let i = 0; i < totalFrames && isProcessing; i++) {
+                        currentFrame = i;
+                        updateStatus(`Processing frame ${i + 1} of ${totalFrames}...`, 'processing');
+                        updateFrameControls();
+                        
+                        // Cargar el frame actual
+                        await loadFrame(i);
+                        
+                        // Procesar el frame
+                        const imageData = originalCanvas.getContext('2d').getImageData(0, 0, originalCanvas.width, originalCanvas.height);
+                        const result = await getDepthFromBackend(imageData, sessionId, i);
+                        const metrics = { min: result.min, max: result.max, mean: result.mean, std: result.std };
+                        
+                        // Actualizar visualización
+                        depthCanvas.width = originalCanvas.width;
+                        depthCanvas.height = originalCanvas.height;
+                        const depthCtx = depthCanvas.getContext('2d');
+                        const depthImageData = depthCtx.createImageData(originalCanvas.width, originalCanvas.height);
+                        const colormap = Array.from({ length: 256 }, (_, i) => {
+                            const t = i / 255;
+                            const r = Math.min(255, 255 * Math.pow(t, 0.5) + 10);
+                            const g = Math.min(255, 255 * Math.pow(t, 1.0));
+                            const b = Math.min(255, 255 * Math.pow(t, 2.0) + 20);
+                            return [r, g, b];
+                        });
+                        
+                        for (let y = 0; y < originalCanvas.height; y++) {
+                            for (let x = 0; x < originalCanvas.width; x++) {
+                                const idx = (y * originalCanvas.width + x) * 4;
+                                if (result.depth && result.depth[y] !== undefined) {
+                                    const color = colormap[Math.min(255, Math.floor(result.depth[y][x] * 255))];
+                                    depthImageData.data.set(color, idx);
+                                    depthImageData.data[idx + 3] = 255;
+                                }
+                            }
+                        }
+                        
+                        depthCtx.putImageData(depthImageData, 0, 0);
+                        minValue.textContent = metrics.min.toFixed(4);
+                        maxValue.textContent = metrics.max.toFixed(4);
+                        meanValue.textContent = metrics.mean.toFixed(4);
+                        stdValue.textContent = metrics.std.toFixed(4);
+                        updateHistogram(result.depth.flat());
+                        
+                        await saveMetrics(i, metrics);
+                    }
+                    
+                    if (isProcessing) {
+                        updateStatus(`Processing complete. ${totalFrames} frames processed.`, 'ready');
+                        analyzeVolumeBtn.disabled = false;
+                        exportBtn.disabled = false;
+                        if (selectedPoints.length > 0) {
+                            analyzePointsBtn.disabled = false;
+                            clearPointsBtn.disabled = false;
+                        }
+                    }
+                } catch (error) {
+                    updateStatus(`Error processing frame ${currentFrame + 1}: ${error.message}`, 'error');
+                    console.error(error);
+                } finally {
+                    isProcessing = false;
+                    processBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            isProcessing = false;
+            processBtn.disabled = false;
+            stopBtn.disabled = true;
+            analyzeVolumeBtn.disabled = false;
+            if (selectedPoints.length > 0) {
+                analyzePointsBtn.disabled = false;
+                clearPointsBtn.disabled = false;
+            }
+            updateStatus(`Processing stopped at frame ${currentFrame}.`, 'ready');
+        });
+
+        // Grabación de video
+        startRecordingBtn.addEventListener('click', async () => {
+            sessionId = `session_${Date.now()}`;
+            try {
+                const response = await fetch('http://192.168.1.42:8000/start-recording', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `session_id=${encodeURIComponent(sessionId)}`
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Failed to start recording');
+                }
+
+                updateStatus("Recording started. Waiting for frames...", "processing");
+                startRecordingBtn.disabled = true;
+                stopRecordingBtn.disabled = false;
+                
+                // Limpiar UI
+                analysisResultsContainer.style.display = 'none';
+                pointAnalysisContainer.style.display = 'none';
+                clearSelectedPoints();
+                currentFrameSource = null;
+                drawOriginalFrame(null, true);
+                
+                // Mostrar controles de progreso
+                videoProgressContainer.style.display = "block";
+                videoProgressBar.value = 0;
+                videoProgressText.textContent = "0%";
+                frameNavigation.style.display = 'none';
+
+            } catch (err) {
+                console.error("Error starting recording:", err);
+                updateStatus(`Error starting recording: ${err.message}`, "error");
+                startRecordingBtn.disabled = false;
+            }
+        });
+
+        stopRecordingBtn.addEventListener('click', async () => {
+            try {
+                updateStatus("Finalizando grabación...", "processing");
+                stopRecordingBtn.disabled = true;
+                
+                const response = await fetch(`http://192.168.1.42:8000/stop-recording/${sessionId}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const result = await response.json();
+                totalFrames = result.frame_count;
+                currentFrame = 0;
+                
+                // Mostrar controles de navegación
+                frameNavigation.style.display = 'flex';
+                updateFrameControls();
+                
+                // Cargar el primer frame
+                await loadFrame(0);
+                preloadAdjacentFrames();
+                
+                updateStatus(`Grabación completada. ${totalFrames} frames cargados.`, "ready");
+                processBtn.disabled = false;
+                startRecordingBtn.disabled = false;
+                
+            } catch (err) {
+                console.error("Error al detener grabación:", err);
+                updateStatus(`Error: ${err.message}`, "error");
+                startRecordingBtn.disabled = false;
+                stopRecordingBtn.disabled = true;
+            }
+        });
+
+        // Navegación entre frames
+        prevFrameBtn.addEventListener('click', () => {
+            if (currentFrame > 0) {
+                showFrame(currentFrame - 1);
+            }
+        });
+
+        nextFrameBtn.addEventListener('click', () => {
+            if (currentFrame < totalFrames - 1) {
+                showFrame(currentFrame + 1);
+            }
+        });
+
+        frameSlider.addEventListener('input', (e) => {
+            const frameIndex = parseInt(e.target.value);
+            if (frameIndex !== currentFrame) {
+                showFrame(frameIndex);
+            }
+        });
+
+        // Inicialización
+        (async function() {
+            updateStatus('Initializing...', 'processing');
+            try {
+                await initDB();
+                updateStatus('Ready to select video file or start recording.', 'ready');
+                histogramChart = echarts.init(histogramEl);
+                histogramChart.setOption({ 
+                    title: { 
+                        text: 'Depth Distribution', 
+                        left: 'center',
+                        textStyle: {
+                            fontSize: 16,
+                            fontWeight: 'bold'
+                        }
+                    } 
+                });
+            } catch (error) {
+                updateStatus(`Initialization error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        })();
+    </script>
+</body>
+</html>
