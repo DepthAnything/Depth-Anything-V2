@@ -1,0 +1,5 @@
+/checkpoints
+/.env
+/.vscode
+/vis_depth
+/depth_anything_v2
