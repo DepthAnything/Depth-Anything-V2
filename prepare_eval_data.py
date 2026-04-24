@@ -1,31 +1,32 @@
 """
 prepare_eval_data.py
 --------------------
-準備 evaluate_metrics.py 所需的 .npy 深度圖資料。
+Prepares .npy depth map files required by evaluate_metrics.py.
 
-這個腳本做兩件事：
-  1. 把 NYU-D 或 KITTI 的 GT 深度圖轉成 .npy 格式，存到 gt_depth/ 資料夾
-  2. 用 DAV2 對對應的 RGB 圖片跑推論，把預測深度也存成 .npy，存到 predictions/ 資料夾
+This script does two things:
+  1. Converts GT depth maps from NYU-D or KITTI into .npy format, saved to gt_depth/
+  2. Runs DAV2 inference on the corresponding RGB images and saves predicted
+     depth maps as .npy files to predictions/
 
-完成後直接用 evaluate_metrics.py 評估：
+Once done, run evaluation directly with evaluate_metrics.py:
   python evaluate_metrics.py --pred_dir ./predictions/kitti --gt_dir ./gt_depth/kitti --output results_kitti.json
   python evaluate_metrics.py --pred_dir ./predictions/nyu   --gt_dir ./gt_depth/nyu   --output results_nyu.json
 
-支援的資料集
------------
-  KITTI  : GT 深度圖是 16-bit PNG，像素值除以 256 = 公尺
-  NYU-D  : GT 深度圖是 .h5 檔（key="depth"）或 16-bit PNG（像素值除以 1000 = 公尺）
+Supported datasets
+------------------
+  KITTI  : GT depth is a 16-bit PNG; pixel value / 256 = metres
+  NYU-D  : GT depth is a .h5 file (key="depth") or 16-bit PNG (pixel value / 1000 = metres)
 
-使用方式
---------
-  # KITTI（用 val.txt 檔案清單）
+Usage
+-----
+  # KITTI (using val.txt file list)
   python prepare_eval_data.py \\
       --dataset kitti \\
       --filelist metric_depth/dataset/splits/kitti/val.txt \\
       --encoder vits \\
       --max-images 50
 
-  # NYU-D（指定圖片資料夾 + GT 資料夾）
+  # NYU-D (specify RGB folder + GT folder)
   python prepare_eval_data.py \\
       --dataset nyu \\
       --img-dir  ./data/nyu/rgb \\
@@ -33,7 +34,7 @@ prepare_eval_data.py
       --encoder vits \\
       --max-images 50
 
-  # Smoke test（不需要任何資料，用假資料驗證流程是否正確）
+  # Smoke test (no real data needed — validates the pipeline with synthetic data)
   python prepare_eval_data.py --smoke-test
 """
 
@@ -43,21 +44,21 @@ import argparse
 import numpy as np
 import cv2
 
-# torch 只在實際跑模型推論時才需要，smoke-test 不需要
+# torch is only needed for actual model inference; smoke-test does not require it
 try:
     import torch
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
 
-# ── 輸出資料夾 ────────────────────────────────────────────────────────────────
+# ── Output directories ────────────────────────────────────────────────────────
 DEFAULT_PRED_ROOT = "./predictions"
 DEFAULT_GT_ROOT   = "./gt_depth"
 
 
-# ── DAV2 模型載入 ─────────────────────────────────────────────────────────────
+# ── DAV2 model loading ────────────────────────────────────────────────────────
 def load_dav2(encoder: str, device: str):
-    """載入 Depth Anything V2 模型。"""
+    """Load the Depth Anything V2 model from a local checkpoint."""
     from depth_anything_v2.dpt import DepthAnythingV2
 
     model_configs = {
@@ -70,80 +71,79 @@ def load_dav2(encoder: str, device: str):
     ckpt = f"checkpoints/depth_anything_v2_{encoder}.pth"
     if not os.path.exists(ckpt):
         raise FileNotFoundError(
-            f"找不到 checkpoint：{ckpt}\n"
-            f"請先下載模型放到 checkpoints/ 資料夾。\n"
-            f"下載連結：https://github.com/DepthAnything/Depth-Anything-V2"
+            f"Checkpoint not found: {ckpt}\n"
+            f"Please download the model weights into the checkpoints/ folder.\n"
+            f"Download: https://github.com/DepthAnything/Depth-Anything-V2"
         )
 
     model = DepthAnythingV2(**model_configs[encoder])
     model.load_state_dict(torch.load(ckpt, map_location='cpu'))
     model = model.to(device).eval()
-    print(f"[DAV2] 載入模型成功：{encoder}，裝置：{device}")
+    print(f"[DAV2] Model loaded: {encoder} on {device}")
     return model
 
 
 def run_dav2(model, img_bgr: np.ndarray, input_size: int = 518) -> np.ndarray:
     """
-    對單張 BGR 圖片跑 DAV2 推論。
-    回傳：原始 float32 深度圖（未正規化，和 nav.py 一致）
+    Run DAV2 inference on a single BGR image.
+    Returns the raw float32 depth map (not normalised — consistent with nav.py).
     """
     return model.infer_image(img_bgr, input_size)
 
 
-# ── GT 深度讀取 ───────────────────────────────────────────────────────────────
+# ── GT depth loading ──────────────────────────────────────────────────────────
 def load_gt_kitti(depth_path: str) -> np.ndarray:
     """
-    讀取 KITTI GT 深度圖。
-    格式：16-bit PNG，像素值 / 256 = 公尺，0 = 無效像素。
-    回傳：float32，單位公尺，無效像素為 0。
+    Load a KITTI GT depth map.
+    Format: 16-bit PNG; pixel value / 256 = metres; 0 = invalid pixel.
+    Returns: float32 array in metres, invalid pixels set to 0.
     """
     depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
     if depth_raw is None:
-        raise FileNotFoundError(f"找不到 KITTI GT 深度圖：{depth_path}")
-    depth_m = depth_raw.astype(np.float32) / 256.0  # 轉公尺（kitti.py 的做法）
+        raise FileNotFoundError(f"KITTI GT depth map not found: {depth_path}")
+    depth_m = depth_raw.astype(np.float32) / 256.0  # convert to metres (matches kitti.py)
     return depth_m
 
 
 def load_gt_nyu(depth_path: str) -> np.ndarray:
     """
-    讀取 NYU-D GT 深度圖。
-    支援兩種格式：
-      - .h5 / .hdf5：key="depth"，值直接是公尺
-      - .png（16-bit）：像素值 / 1000 = 公尺
-    回傳：float32，單位公尺。
+    Load a NYU-D GT depth map.
+    Supports two formats:
+      - .h5 / .hdf5 : key="depth", values already in metres
+      - .png (16-bit): pixel value / 1000 = metres
+    Returns: float32 array in metres.
     """
     ext = os.path.splitext(depth_path)[1].lower()
 
     if ext in ('.h5', '.hdf5', '.mat'):
         import h5py
         with h5py.File(depth_path, 'r') as f:
-            # NYU-D HDF5 的 key 通常是 'depth'
             if 'depth' in f:
                 depth_m = np.array(f['depth'], dtype=np.float32)
             else:
-                # 嘗試第一個 key
+                # Fall back to the first available key
                 key = list(f.keys())[0]
                 depth_m = np.array(f[key], dtype=np.float32)
-                print(f"  [警告] 找不到 'depth' key，改用 '{key}'")
+                print(f"  [Warning] 'depth' key not found; using '{key}' instead")
     elif ext == '.png':
         depth_raw = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
         if depth_raw is None:
-            raise FileNotFoundError(f"找不到 NYU GT 深度圖：{depth_path}")
-        depth_m = depth_raw.astype(np.float32) / 1000.0  # mm → 公尺
+            raise FileNotFoundError(f"NYU GT depth map not found: {depth_path}")
+        depth_m = depth_raw.astype(np.float32) / 1000.0  # mm -> metres
     else:
-        raise ValueError(f"不支援的 NYU 深度格式：{ext}，支援 .h5 / .png")
+        raise ValueError(f"Unsupported NYU depth format: {ext}. Supported: .h5, .png")
 
     return depth_m
 
 
-# ── KITTI 主流程 ──────────────────────────────────────────────────────────────
+# ── KITTI pipeline ────────────────────────────────────────────────────────────
 def prepare_kitti(filelist_path: str, encoder: str, input_size: int,
                   max_images: int, device: str):
     """
-    根據 KITTI val.txt 準備 GT 和預測的 .npy 檔案。
+    Prepare GT and predicted .npy files from a KITTI val.txt file list.
 
-    val.txt 每行格式：
-        <rgb_path> <gt_depth_path>
+    Each line in val.txt:
+        <rgb_image_path> <gt_depth_path>
     """
     pred_dir = os.path.join(DEFAULT_PRED_ROOT, "kitti")
     gt_dir   = os.path.join(DEFAULT_GT_ROOT,   "kitti")
@@ -158,41 +158,41 @@ def prepare_kitti(filelist_path: str, encoder: str, input_size: int,
 
     model = load_dav2(encoder, device)
 
-    print(f"\n[KITTI] 開始處理 {len(lines)} 張圖片...")
+    print(f"\n[KITTI] Processing {len(lines)} images...")
     ok, skip = 0, 0
 
     for i, line in enumerate(lines):
         parts = line.split()
         if len(parts) < 2:
-            print(f"  [跳過] 第 {i+1} 行格式錯誤：{line}")
+            print(f"  [Skip] Line {i+1} has unexpected format: {line}")
             skip += 1
             continue
 
         img_path, depth_path = parts[0], parts[1]
 
-        # 用圖片的 stem 當檔名，避免同名衝突
-        # 例：2011_09_26_drive_0002_sync__image_02__0000000069
+        # Build a unique filename from the image path to avoid collisions
+        # e.g. 2011_09_26_drive_0002_sync__image_02__0000000069
         stem = (img_path.replace('/', '__')
                         .replace('\\', '__')
                         .replace('.png', '')
-                        .replace('.jpg', ''))[-60:]  # 最多 60 字元
+                        .replace('.jpg', ''))[-60:]  # cap at 60 characters
 
         out_pred = os.path.join(pred_dir, stem + ".npy")
         out_gt   = os.path.join(gt_dir,   stem + ".npy")
 
-        # ── GT ──────────────────────────────────────────────────────────────
+        # ── GT ───────────────────────────────────────────────────────────────
         try:
             gt = load_gt_kitti(depth_path)
             np.save(out_gt, gt)
         except FileNotFoundError as e:
-            print(f"  [跳過] GT 不存在：{e}")
+            print(f"  [Skip] GT not found: {e}")
             skip += 1
             continue
 
-        # ── 預測 ─────────────────────────────────────────────────────────────
+        # ── Prediction ───────────────────────────────────────────────────────
         img_bgr = cv2.imread(img_path)
         if img_bgr is None:
-            print(f"  [跳過] RGB 圖片不存在：{img_path}")
+            print(f"  [Skip] RGB image not found: {img_path}")
             skip += 1
             continue
 
@@ -200,33 +200,33 @@ def prepare_kitti(filelist_path: str, encoder: str, input_size: int,
         np.save(out_pred, pred)
 
         ok += 1
-        print(f"  [{i+1}/{len(lines)}] 完成：{stem}")
+        print(f"  [{i+1}/{len(lines)}] Done: {stem}")
 
-    print(f"\n[KITTI] 完成！成功 {ok} 張，跳過 {skip} 張")
-    print(f"  GT 儲存於：{gt_dir}")
-    print(f"  預測儲存於：{pred_dir}")
-    print(f"\n下一步：")
+    print(f"\n[KITTI] Finished! {ok} succeeded, {skip} skipped")
+    print(f"  GT saved to      : {gt_dir}")
+    print(f"  Predictions saved: {pred_dir}")
+    print(f"\nNext step:")
     print(f"  python evaluate_metrics.py --pred_dir {pred_dir} --gt_dir {gt_dir} --output results_kitti.json")
 
 
-# ── NYU-D 主流程 ──────────────────────────────────────────────────────────────
+# ── NYU-D pipeline ────────────────────────────────────────────────────────────
 def prepare_nyu(img_dir: str, gt_dir_input: str, encoder: str,
                 input_size: int, max_images: int, device: str):
     """
-    根據圖片資料夾 + GT 資料夾準備 NYU-D 的 .npy 檔案。
+    Prepare GT and predicted .npy files from an NYU-D RGB + GT folder pair.
 
-    預期資料夾結構（圖片和 GT 同名，副檔名不同）：
-        img_dir/   0001.jpg, 0002.jpg ...
-        gt_dir/    0001.h5,  0002.h5  ...
-      或
-        gt_dir/    0001.png, 0002.png ...
+    Expected folder structure (same filename stem, different extension):
+        img_dir/   0001.jpg, 0002.jpg, ...
+        gt_dir/    0001.h5,  0002.h5,  ...
+      or
+        gt_dir/    0001.png, 0002.png, ...
     """
     pred_dir = os.path.join(DEFAULT_PRED_ROOT, "nyu")
     gt_dir   = os.path.join(DEFAULT_GT_ROOT,   "nyu")
     os.makedirs(pred_dir, exist_ok=True)
     os.makedirs(gt_dir,   exist_ok=True)
 
-    # 找出所有 RGB 圖片
+    # Collect all RGB images in the input folder
     img_exts = ('.jpg', '.jpeg', '.png')
     img_files = sorted([
         f for f in os.listdir(img_dir)
@@ -238,13 +238,13 @@ def prepare_nyu(img_dir: str, gt_dir_input: str, encoder: str,
 
     model = load_dav2(encoder, device)
 
-    print(f"\n[NYU-D] 開始處理 {len(img_files)} 張圖片...")
+    print(f"\n[NYU-D] Processing {len(img_files)} images...")
     ok, skip = 0, 0
 
     for i, img_fname in enumerate(img_files):
         stem = os.path.splitext(img_fname)[0]
 
-        # 尋找對應的 GT 深度圖（支援 .h5 / .hdf5 / .png）
+        # Find the matching GT depth file (try .h5, .hdf5, .png in order)
         gt_path = None
         for gt_ext in ('.h5', '.hdf5', '.png'):
             candidate = os.path.join(gt_dir_input, stem + gt_ext)
@@ -253,26 +253,26 @@ def prepare_nyu(img_dir: str, gt_dir_input: str, encoder: str,
                 break
 
         if gt_path is None:
-            print(f"  [跳過] 找不到 GT：{stem}（試過 .h5/.hdf5/.png）")
+            print(f"  [Skip] No GT found for '{stem}' (tried .h5/.hdf5/.png)")
             skip += 1
             continue
 
         out_pred = os.path.join(pred_dir, stem + ".npy")
         out_gt   = os.path.join(gt_dir,   stem + ".npy")
 
-        # ── GT ──────────────────────────────────────────────────────────────
+        # ── GT ───────────────────────────────────────────────────────────────
         try:
             gt = load_gt_nyu(gt_path)
             np.save(out_gt, gt)
         except Exception as e:
-            print(f"  [跳過] GT 讀取失敗：{e}")
+            print(f"  [Skip] Failed to load GT: {e}")
             skip += 1
             continue
 
-        # ── 預測 ─────────────────────────────────────────────────────────────
+        # ── Prediction ───────────────────────────────────────────────────────
         img_bgr = cv2.imread(os.path.join(img_dir, img_fname))
         if img_bgr is None:
-            print(f"  [跳過] 圖片讀取失敗：{img_fname}")
+            print(f"  [Skip] Failed to read image: {img_fname}")
             skip += 1
             continue
 
@@ -280,23 +280,23 @@ def prepare_nyu(img_dir: str, gt_dir_input: str, encoder: str,
         np.save(out_pred, pred)
 
         ok += 1
-        print(f"  [{i+1}/{len(img_files)}] 完成：{stem}")
+        print(f"  [{i+1}/{len(img_files)}] Done: {stem}")
 
-    print(f"\n[NYU-D] 完成！成功 {ok} 張，跳過 {skip} 張")
-    print(f"  GT 儲存於：{gt_dir}")
-    print(f"  預測儲存於：{pred_dir}")
-    print(f"\n下一步：")
+    print(f"\n[NYU-D] Finished! {ok} succeeded, {skip} skipped")
+    print(f"  GT saved to      : {gt_dir}")
+    print(f"  Predictions saved: {pred_dir}")
+    print(f"\nNext step:")
     print(f"  python evaluate_metrics.py --pred_dir {pred_dir} --gt_dir {gt_dir} --output results_nyu.json")
 
 
-# ── Smoke Test（不需要任何真實資料）─────────────────────────────────────────
+# ── Smoke test (no real data required) ───────────────────────────────────────
 def smoke_test():
     """
-    用假資料驗證整個流程是否正確，不需要真實資料集。
-    測試：GT 讀取 → 儲存 .npy → evaluate_metrics 可以讀取並計算。
+    Validates the full pipeline using synthetic data — no real dataset needed.
+    Tests: generate fake GT/pred -> save as .npy -> evaluate_metrics can read and compute.
     """
     print("=" * 55)
-    print("Smoke Test：驗證資料準備流程")
+    print("Smoke Test: validating data preparation pipeline")
     print("=" * 55)
 
     import tempfile
@@ -310,25 +310,24 @@ def smoke_test():
         os.makedirs(pred_dir)
         os.makedirs(gt_dir)
 
-        # 模擬 5 張圖
+        # Simulate 5 scenes
         for idx in range(5):
             fname = f"scene{idx:04d}.npy"
 
-            # 模擬 GT（KITTI 風格：公尺，有些像素是 0 無效）
+            # Fake GT: KITTI-style depth in metres, ~30% invalid pixels (value = 0)
             gt = rng.uniform(0, 80, (375, 1242)).astype(np.float32)
-            gt[rng.random((375, 1242)) < 0.3] = 0  # 30% 無效像素
+            gt[rng.random((375, 1242)) < 0.3] = 0
             np.save(os.path.join(gt_dir, fname), gt)
 
-            # 模擬 DAV2 預測（相對深度，帶一點誤差）
+            # Fake prediction: relative depth with small noise
             noise = rng.normal(0, 0.05, gt.shape).astype(np.float32)
-            pred = gt + noise
-            pred = pred.clip(0, None)
+            pred = (gt + noise).clip(0, None)
             np.save(os.path.join(pred_dir, fname), pred)
 
-        # 驗證 evaluate_metrics 可以讀取並計算
+        # Verify evaluate_metrics can load and compute correctly
         pred_files = sorted(os.listdir(pred_dir))
         gt_files   = sorted(os.listdir(gt_dir))
-        assert pred_files == gt_files, "檔名不對應！"
+        assert pred_files == gt_files, "Filename mismatch between pred and gt!"
 
         iou_list, prec_list, rec_list = [], [], []
         for fname in pred_files:
@@ -345,31 +344,31 @@ def smoke_test():
         print(f"  Mean Precision : {np.mean(prec_list):.4f}")
         print(f"  Mean Recall    : {np.mean(rec_list):.4f}")
 
-    print("\nSmoke Test PASSED — 資料準備流程正常！\n")
+    print("\nSmoke Test PASSED — data preparation pipeline is working correctly!\n")
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── CLI entry point ───────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="準備 NYU-D / KITTI 深度評估資料（.npy 格式）"
+        description="Prepare NYU-D / KITTI depth evaluation data (.npy format)"
     )
     parser.add_argument('--dataset',    type=str, choices=['kitti', 'nyu'],
-                        help='資料集名稱')
+                        help='Dataset name')
     parser.add_argument('--filelist',   type=str, default=None,
-                        help='[KITTI] val.txt 的路徑')
+                        help='[KITTI] Path to val.txt')
     parser.add_argument('--img-dir',    type=str, default=None,
-                        help='[NYU-D] RGB 圖片資料夾')
+                        help='[NYU-D] Path to RGB image folder')
     parser.add_argument('--gt-dir',     type=str, default=None,
-                        help='[NYU-D] GT 深度圖資料夾')
+                        help='[NYU-D] Path to GT depth folder')
     parser.add_argument('--encoder',    type=str, default='vits',
                         choices=['vits', 'vitb', 'vitl', 'vitg'],
-                        help='DAV2 模型大小（預設 vits，最快）')
+                        help='DAV2 model size (default: vits — fastest)')
     parser.add_argument('--input-size', type=int, default=518,
-                        help='DAV2 輸入圖片大小（預設 518）')
+                        help='DAV2 input image size (default: 518)')
     parser.add_argument('--max-images', type=int, default=0,
-                        help='最多處理幾張圖（0 = 全部）')
+                        help='Max images to process (0 = all)')
     parser.add_argument('--smoke-test', action='store_true',
-                        help='用假資料跑流程驗證，不需要真實資料集')
+                        help='Run pipeline validation with synthetic data (no real dataset needed)')
     args = parser.parse_args()
 
     if args.smoke_test:
@@ -377,21 +376,21 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if args.dataset is None:
-        parser.error("請指定 --dataset kitti 或 --dataset nyu，或用 --smoke-test 測試")
+        parser.error("Please specify --dataset kitti or --dataset nyu, or use --smoke-test")
 
     if not TORCH_AVAILABLE:
-        print("[錯誤] 找不到 PyTorch，無法跑模型推論。")
-        print("  請在你的專案虛擬環境裡安裝：pip install torch")
+        print("[Error] PyTorch not found — cannot run model inference.")
+        print("  Please install it in your virtual environment: pip install torch")
         sys.exit(1)
 
     DEVICE = ('cuda' if torch.cuda.is_available()
               else 'mps'  if torch.backends.mps.is_available()
               else 'cpu')
-    print(f"使用裝置：{DEVICE}")
+    print(f"Using device: {DEVICE}")
 
     if args.dataset == 'kitti':
         if args.filelist is None:
-            parser.error("KITTI 需要 --filelist <val.txt 路徑>")
+            parser.error("KITTI requires --filelist <path to val.txt>")
         prepare_kitti(
             filelist_path=args.filelist,
             encoder=args.encoder,
@@ -402,7 +401,7 @@ if __name__ == "__main__":
 
     elif args.dataset == 'nyu':
         if args.img_dir is None or args.gt_dir is None:
-            parser.error("NYU-D 需要 --img-dir 和 --gt-dir")
+            parser.error("NYU-D requires both --img-dir and --gt-dir")
         prepare_nyu(
             img_dir=args.img_dir,
             gt_dir_input=args.gt_dir,
