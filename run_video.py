@@ -1,7 +1,3 @@
-<<<<<<< Updated upstream
-=======
-@ -1,92 +0,0 @@
->>>>>>> Stashed changes
 import argparse
 import cv2
 import glob
@@ -93,8 +89,4 @@ if __name__ == '__main__':
                 out.write(combined_frame)
         
         raw_video.release()
-<<<<<<< Updated upstream
         out.release()
-=======
-        out.release()
->>>>>>> Stashed changes
