@@ -44,7 +44,7 @@ We provide **four models** of varying scales for robust relative depth estimatio
 
 ## Usage
 
-### Prepraration
+### Preparation
 
 ```bash
 git clone https://github.com/DepthAnything/Depth-Anything-V2
