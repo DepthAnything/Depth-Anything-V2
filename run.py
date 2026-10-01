@@ -7,6 +7,7 @@ import os
 import torch
 
 from depth_anything_v2.dpt import DepthAnythingV2
+from gdepth import GoogleDynamicDepthGenerator
 
 
 if __name__ == '__main__':
@@ -20,6 +21,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--pred-only', dest='pred_only', action='store_true', help='only display the prediction')
     parser.add_argument('--grayscale', dest='grayscale', action='store_true', help='do not apply colorful palette')
+    parser.add_argument('--gdepth', dest='gdepth', action='store_true', help='generate google dynamic depth 1.0')
     
     args = parser.parse_args()
     
@@ -66,6 +68,12 @@ if __name__ == '__main__':
         
         if args.pred_only:
             cv2.imwrite(os.path.join(args.outdir, os.path.splitext(os.path.basename(filename))[0] + '.png'), depth)
+        elif args.gdepth:
+            generator = GoogleDynamicDepthGenerator(
+                primary_image_path=filename,
+                depth_map=depth
+            )
+            generator.generate(os.path.join(args.outdir, os.path.splitext(os.path.basename(filename))[0] + '.jpg'))
         else:
             split_region = np.ones((raw_image.shape[0], 50, 3), dtype=np.uint8) * 255
             combined_result = cv2.hconcat([raw_image, split_region, depth])
